@@ -925,29 +925,49 @@ thumbnail_jp: thumbnail_jp || undefined,
 };
 
 const transformText = async (post: WPPost): Promise<TextItem> => {
-  const title_ko = decode(post.title.rendered);
-  const summary_ko = decode(post.excerpt.rendered.replace(/<[^>]+>/g, '').trim());
+  const safeTitleRendered =
+    typeof post?.title?.rendered === 'string'
+      ? post.title.rendered
+      : typeof (post as any)?.post_title === 'string'
+      ? (post as any).post_title
+      : '';
+
+  const safeExcerptRendered =
+    typeof post?.excerpt?.rendered === 'string'
+      ? post.excerpt.rendered
+      : typeof (post as any)?.post_excerpt === 'string'
+      ? (post as any).post_excerpt
+      : '';
+
+  const safeContentRendered =
+    typeof post?.content?.rendered === 'string'
+      ? post.content.rendered
+      : '';
+
+  const title_ko = decode(safeTitleRendered);
+  const summary_ko = decode(
+    safeExcerptRendered.replace(/<[^>]+>/g, '').trim()
+  );
   const featuredImage = getFullSizeUrl(
     post._embedded?.['wp:featuredmedia']?.[0]?.source_url || ''
   );
 
   // Resolve [gallery] shortcodes in all content HTML fields
-  const contentHtml = await resolveGalleryShortcodes(post.content.rendered || '');
+  const contentHtml = await resolveGalleryShortcodes(safeContentRendered || '');
   const content_ko = decode(stripHtmlToText(contentHtml));
 
   // ACF multilingual fields
   const acf = post.acf || {};
 
-    // EN
-  const title_en = acf['text_제목en']
-    ? decode(acf['text_제목en'])
-    : acf['text_제목_en']
+      // EN
+  const title_en = acf['text_제목_en']
     ? decode(acf['text_제목_en'])
     : acf.title_en
     ? decode(acf.title_en)
     : '';
 
-    const content_en_source =
+  const content_en_source =
+    acf['text_작품_설명en'] ||
     acf['TEXT_작품_설명en'] ||
     acf['TEXT_작품_설명_en'] ||
     acf['text_작품_설명_en'] ||
@@ -966,18 +986,16 @@ const transformText = async (post: WPPost): Promise<TextItem> => {
     ? decode(stripHtmlToText(content_en_raw))
     : '';
 
-  // JP
-  const title_jp = acf['text_제목jp']
-    ? decode(acf['text_제목jp'])
-    : acf['text_제목_jp']
+    // JP
+  const title_jp = acf['text_제목_jp']
     ? decode(acf['text_제목_jp'])
     : acf.title_jp
     ? decode(acf.title_jp)
     : '';
 
   const content_jp_source =
-    acf['TEXT_작품_설명jp'] ||
     acf['text_작품_설명jp'] ||
+    acf['TEXT_작품_설명jp'] ||
     acf['TEXT_작품_설명_jp'] ||
     acf['text_작품_설명_jp'] ||
     acf.content_jp ||
@@ -996,11 +1014,18 @@ const transformText = async (post: WPPost): Promise<TextItem> => {
     : '';
 
   // DEBUG: Log final values
+    console.log('[transformText Debug] ACF raw:', acf);
+  console.log('[transformText Debug] acf.text_제목_en:', acf['text_제목_en']);
+  console.log('[transformText Debug] acf.text_작품_설명en:', acf['text_작품_설명en']);
+  console.log('[transformText Debug] acf.text_제목_jp:', acf['text_제목_jp']);
+  console.log('[transformText Debug] acf.text_작품_설명jp:', acf['text_작품_설명jp']);
   console.log('[transformText Debug] Final values:', {
     title_en,
     title_jp,
-    content_en: content_en.substring(0, 100) + '...',
-    content_jp: content_jp.substring(0, 100) + '...',
+    content_en,
+    content_jp,
+    content_en_raw,
+    content_jp_raw,
   });
 
   // Transform ACF related_works
@@ -1189,19 +1214,21 @@ const workThumbnail =
       jp: content_jp_raw || undefined,
     },
     relatedWorks,
-    hasEn: !!(
-      acf['text_제목en'] ||
+            hasEn: !!(
       acf['text_제목_en'] ||
+      acf['text_작품_설명en'] ||
       acf.title_en ||
-      acf['TEXT_작품_설명en'] ||
-      acf['TEXT_작품_설명_en']
+      acf.content_en ||
+      title_en.trim() ||
+      content_en_raw.trim()
     ),
     hasJp: !!(
-      acf['text_제목jp'] ||
       acf['text_제목_jp'] ||
-      acf.title_jp ||
       acf['text_작품_설명jp'] ||
-      acf['TEXT_작품_설명jp']
+      acf.title_jp ||
+      acf.content_jp ||
+      title_jp.trim() ||
+      content_jp_raw.trim()
     ),
     hasKo: !!(title_ko.trim() && content_ko.trim()),
   };
@@ -1632,13 +1659,16 @@ export const fetchTextById = async (id: string): Promise<TextItem | null> => {
 export const fetchAboutPage = async (): Promise<AboutData | null> => {
   try {
     const response = await api.get('/pages', {
-      params: {
-        slug: 'about',
-        _embed: 1,
-      },
-    });
+  params: {
+    slug: 'about',
+    _embed: 1,
+  },
+});
 
-    if (response.data.length === 0) return null;
+console.log('[fetchAboutPage Debug] response.data:', response.data);
+console.log('[fetchAboutPage Debug] response.data.length:', response.data?.length);
+
+if (response.data.length === 0) return null;
 
     const page = response.data[0];
     const featuredImage = page._embedded?.['wp:featuredmedia']?.[0]?.source_url
@@ -1697,6 +1727,25 @@ export const fetchAboutPage = async (): Promise<AboutData | null> => {
             .join('\n')
         : undefined;
     }
+
+            console.log('[fetchAboutPage Debug] page:', page);
+    console.log('[fetchAboutPage Debug] acf:', acf);
+    console.log('[fetchAboutPage Debug] acf keys:', Object.keys(acf || {}));
+    console.log('[fetchAboutPage Debug] page.title.rendered:', page.title?.rendered);
+    console.log('[fetchAboutPage Debug] page.content.rendered:', page.content?.rendered);
+    console.log('[fetchAboutPage Debug] content_en:', content_en);
+    console.log('[fetchAboutPage Debug] content_jp:', content_jp);
+    console.log('[fetchAboutPage Debug] profile_info:', acf.profile_info);
+    console.log('[fetchAboutPage Debug] profile_info_ko:', acf.profile_info_ko);
+    console.log('[fetchAboutPage Debug] profile_info_en:', acf.profile_info_en);
+    console.log('[fetchAboutPage Debug] profile_info_jp:', acf.profile_info_jp);
+    console.log('[fetchAboutPage Debug] profile_info2:', acf.profile_info2);
+    console.log('[fetchAboutPage Debug] contactGroup:', contactGroup);
+    console.log('[fetchAboutPage Debug] contact:', {
+      email: acf.email || contactGroup.email || '',
+      instagram: acf.instagram || contactGroup.instagram || '',
+      website: acf.website || contactGroup.website || '',
+    });
 
     return {
       title: decode(page.title.rendered),

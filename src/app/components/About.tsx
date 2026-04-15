@@ -546,7 +546,7 @@ export const About = () => {
   };
 }, []);
 
-  const processedContent = useMemo(() => {
+    const processedContent = useMemo(() => {
     let rawContent: string | undefined;
     if (lang === 'en' && aboutData?.content_en) {
       rawContent = aboutData.content_en;
@@ -556,7 +556,16 @@ export const About = () => {
       rawContent = aboutData?.content;
     }
 
+    console.log('[About Debug] lang:', lang);
+    console.log('[About Debug] aboutData:', aboutData);
+    console.log('[About Debug] aboutData.content:', aboutData?.content);
+    console.log('[About Debug] aboutData.content_en:', aboutData?.content_en);
+    console.log('[About Debug] aboutData.content_jp:', aboutData?.content_jp);
+    console.log('[About Debug] selected rawContent:', rawContent);
+
     const transformed = transformBioContent(rawContent, works, lang);
+
+    console.log('[About Debug] transformed:', transformed);
 
     if (
       lang !== 'ko' &&

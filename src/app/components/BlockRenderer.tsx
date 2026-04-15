@@ -1794,13 +1794,23 @@ const ListBlock = ({
   lang: string;
   align?: ParsedBlock['align'];
 }) => (
-  <div className="max-w-3xl mx-auto px-6 md:px-12">
+  <div className="w-full px-4 md:px-4">
     <div
       className={`${
-        lang === 'jp' ? 'font-[Shippori_Mincho]' : 'font-serif'
-      } text-foreground/80 text-sm md:text-base leading-[1.8] opacity-80 [&_li]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 ${textAlignClass(
-        align
-      )} ${wpContentStyles}`}
+        lang === 'jp'
+          ? 'font-[var(--font-body-jp)]'
+          : lang === 'en'
+          ? 'font-[var(--font-body-en)]'
+          : 'font-[var(--font-body-ko)]'
+      } text-foreground/80 text-sm md:text-[16px] leading-[1.5] opacity-100
+        [&_ul]:list-disc
+        [&_ul]:pl-5
+        [&_ol]:list-decimal
+        [&_ol]:pl-5
+        [&_li]:my-1
+        [&_li_p]:inline
+        ${textAlignClass(align)}
+        ${wpContentStyles}`}
       dangerouslySetInnerHTML={{ __html: getRenderableHtml(html) }}
     />
   </div>
