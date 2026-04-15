@@ -1505,13 +1505,12 @@ const transformWorkListItem = (post: WPPost): Work => {
 
 export const fetchWorks = async (): Promise<Work[]> => {
   try {
-
-    const perPage = 30;
+    const perPage = 100;
     let page = 1;
     let allPosts: WPPost[] = [];
-    let hasMore = true;
+    let totalPages = 1;
 
-    while (hasMore) {
+    while (page <= totalPages) {
       const response = await api.get('/work', {
         params: {
           per_page: perPage,
@@ -1520,16 +1519,12 @@ export const fetchWorks = async (): Promise<Work[]> => {
       });
 
       const posts = response.data as WPPost[];
+      const totalPagesHeader = response.headers['x-wp-totalpages'];
+      totalPages = totalPagesHeader ? Number(totalPagesHeader) : 1;
 
       allPosts = [...allPosts, ...posts];
-
-      if (posts.length < perPage) {
-        hasMore = false;
-      } else {
-        page += 1;
-      }
+      page += 1;
     }
-
 
     const works = allPosts.map((post: WPPost, index: number) => {
       const work = transformWorkListItem(post);
