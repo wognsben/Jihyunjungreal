@@ -1,0 +1,11 @@
+@import './fonts.css';
+@import './tailwind.css';
+@import './theme.css';
+@import './tooltip.css';
+
+/* Custom media queries for hover and pointer support */
+@media (hover: hover) and (pointer: fine) {
+  .hover\:hover-trigger:hover .hover\:hover-target {
+    display: block;
+  }
+}

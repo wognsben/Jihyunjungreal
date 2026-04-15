@@ -1,0 +1,111 @@
+/* 밑줄 효과 — tr에는 적용하지 않음 (About.tsx에서 tr.hover-line::before는
+   Tailwind으로 화살표 →를 표시하므로 충돌 방지) */
+.hover-line:not(tr)::before {
+	content: '';
+	height: 1px;
+	width: 100%;
+	background: currentColor;
+	position: absolute;
+	top: 92%;
+    left: 0;
+	transition: transform 0.3s cubic-bezier(0.84, 0, 0.16, 1);
+	transform-origin: 0% 50%;
+    pointer-events: none;
+    transform: scaleX(0);
+}
+
+.hover-line:not(tr):hover::before {
+	transform: scaleX(1);
+	transform-origin: 0% 50%;
+}
+
+.hover-line .shortcut-icon {
+    font-size: 0.7em;
+    opacity: 0.6;
+    transition: opacity 0.3s;
+}
+
+.hover-line:hover .shortcut-icon {
+    opacity: 1;
+}
+
+/* tr.hover-line: 링크가 있는 약력 행 — 항상 밑줄 + 색상 구분 */
+tr.hover-line {
+    cursor: pointer;
+}
+tr.hover-line td:last-child {
+    text-decoration: none;
+}
+tr.hover-line:hover td:last-child {
+    text-decoration: none;
+}
+
+/* Tooltip Sidebar */
+.tooltip {
+    /* Position and Layout handled by Tailwind in React component */
+    /* pointer-events and opacity are now managed by React/GSAP inline styles */
+    background: transparent;
+}
+
+.tooltip__text {
+	margin: 0;
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: var(--color-tooltip-text);
+}
+
+.tooltip__img-wrap {
+    /* Removed Grid to prevent conflict with absolute positioning */
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    /* Ensure border-radius or other styles if needed */
+}
+
+.tooltip__img {
+    /* Removed Grid Area - React handles absolute positioning */
+	width: 100%;
+	height: 100%;
+	opacity: 0;
+	will-change: transform;
+    background-size: cover;
+    background-position: center;
+}
+
+.tooltip__img--current {
+	opacity: 1;
+}
+
+/* Lines */
+.line {
+	background: var(--color-tooltip-line);
+	position: fixed;
+	will-change: transform;
+	pointer-events: none;
+    z-index: var(--tooltip-z-index);
+}
+
+/* Mapped to React class names */
+.line-v {
+	height: 100%;
+	width: 1px;
+	top: 0;
+}
+
+.line-h {
+	width: 100%;
+	height: 1px;
+	left: 0;
+}
+
+/* Fullscreen Gallery (if needed for custom styles) */
+.gallery-fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: var(--color-tooltip-bg);
+    z-index: 100;
+}
