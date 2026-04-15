@@ -592,12 +592,6 @@ const imagesAndCaptions = extractImagesAndCaptions(fallbackContent);
     if (!featuredImage && galleryImages.length > 0) {
       featuredImage = galleryImages[0];
     }
-
-    console.log(
-      '[transformWork Debug] Extracted from content:',
-      galleryImages.length,
-      'images'
-    );  
   }
 
   // Try to find "Year" from work_category taxonomy
@@ -1012,21 +1006,6 @@ const transformText = async (post: WPPost): Promise<TextItem> => {
   const content_jp = content_jp_raw
     ? decode(stripHtmlToText(content_jp_raw))
     : '';
-
-  // DEBUG: Log final values
-    console.log('[transformText Debug] ACF raw:', acf);
-  console.log('[transformText Debug] acf.text_제목_en:', acf['text_제목_en']);
-  console.log('[transformText Debug] acf.text_작품_설명en:', acf['text_작품_설명en']);
-  console.log('[transformText Debug] acf.text_제목_jp:', acf['text_제목_jp']);
-  console.log('[transformText Debug] acf.text_작품_설명jp:', acf['text_작품_설명jp']);
-  console.log('[transformText Debug] Final values:', {
-    title_en,
-    title_jp,
-    content_en,
-    content_jp,
-    content_en_raw,
-    content_jp_raw,
-  });
 
   // Transform ACF related_works
   let relatedWorks: TextItem['relatedWorks'] = undefined;
@@ -1526,7 +1505,6 @@ const transformWorkListItem = (post: WPPost): Work => {
 
 export const fetchWorks = async (): Promise<Work[]> => {
   try {
-    console.log('[fetchWorks] START (paged mode)');
 
     const perPage = 30;
     let page = 1;
@@ -1542,7 +1520,6 @@ export const fetchWorks = async (): Promise<Work[]> => {
       });
 
       const posts = response.data as WPPost[];
-      console.log(`[fetchWorks] page ${page} -> ${posts.length}`);
 
       allPosts = [...allPosts, ...posts];
 
@@ -1553,7 +1530,6 @@ export const fetchWorks = async (): Promise<Work[]> => {
       }
     }
 
-    console.log('[fetchWorks] ALL POSTS:', allPosts.length);
 
     const works = allPosts.map((post: WPPost, index: number) => {
       const work = transformWorkListItem(post);
@@ -1563,8 +1539,6 @@ export const fetchWorks = async (): Promise<Work[]> => {
         order: index + 1,
       };
     });
-
-    console.log('[fetchWorks] DONE:', works.length);
 
     return works;
   } catch (error) {
@@ -1579,14 +1553,7 @@ export const fetchWorkById = async (
 ): Promise<Work | null> => {
   const cacheKey = makeWorkDetailCacheKey(id, lang);
 
-  console.log('[fetchWorkById] called');
-  console.log('[fetchWorkById] id:', id);
-  console.log('[fetchWorkById] lang:', lang);
-  console.log('[fetchWorkById] cacheKey:', cacheKey);
-
   if (workDetailCache.has(cacheKey)) {
-    console.log('[fetchWorkById] cache hit:', cacheKey);
-    console.log('[fetchWorkById] cached work:', workDetailCache.get(cacheKey));
     return workDetailCache.get(cacheKey)!;
   }
 
@@ -1597,23 +1564,9 @@ export const fetchWorkById = async (
       params: { _embed: 1 },
     });
 
-    console.log('[fetchWorkById] raw response.data:', response.data);
-    console.log('[fetchWorkById] raw response.data.id:', response.data?.id);
-    console.log('[fetchWorkById] raw response.data.title:', response.data?.title);
-    console.log('[fetchWorkById] raw response.data.content?.rendered:', response.data?.content?.rendered);
-    console.log('[fetchWorkById] raw response.data.acf:', response.data?.acf);
-
     const rawWork = response.data;
 
     const fetchedWork = await transformWork(rawWork, lang);
-
-    console.log('[fetchWorkById] transformed fetchedWork:', fetchedWork);
-    console.log('[fetchWorkById] transformed fetchedWork.id:', fetchedWork?.id);
-    console.log('[fetchWorkById] transformed fetchedWork.title_ko:', fetchedWork?.title_ko);
-    console.log('[fetchWorkById] transformed fetchedWork.content_rendered:', fetchedWork?.content_rendered);
-    console.log('[fetchWorkById] transformed fetchedWork.content_en:', fetchedWork?.content_en);
-    console.log('[fetchWorkById] transformed fetchedWork.content_jp:', fetchedWork?.content_jp);
-    console.log('[fetchWorkById] transformed fetchedWork.galleryImages:', fetchedWork?.galleryImages);
 
     workDetailCache.set(cacheKey, fetchedWork);
 
@@ -1664,9 +1617,6 @@ export const fetchAboutPage = async (): Promise<AboutData | null> => {
     _embed: 1,
   },
 });
-
-console.log('[fetchAboutPage Debug] response.data:', response.data);
-console.log('[fetchAboutPage Debug] response.data.length:', response.data?.length);
 
 if (response.data.length === 0) return null;
 
@@ -1727,25 +1677,6 @@ if (response.data.length === 0) return null;
             .join('\n')
         : undefined;
     }
-
-            console.log('[fetchAboutPage Debug] page:', page);
-    console.log('[fetchAboutPage Debug] acf:', acf);
-    console.log('[fetchAboutPage Debug] acf keys:', Object.keys(acf || {}));
-    console.log('[fetchAboutPage Debug] page.title.rendered:', page.title?.rendered);
-    console.log('[fetchAboutPage Debug] page.content.rendered:', page.content?.rendered);
-    console.log('[fetchAboutPage Debug] content_en:', content_en);
-    console.log('[fetchAboutPage Debug] content_jp:', content_jp);
-    console.log('[fetchAboutPage Debug] profile_info:', acf.profile_info);
-    console.log('[fetchAboutPage Debug] profile_info_ko:', acf.profile_info_ko);
-    console.log('[fetchAboutPage Debug] profile_info_en:', acf.profile_info_en);
-    console.log('[fetchAboutPage Debug] profile_info_jp:', acf.profile_info_jp);
-    console.log('[fetchAboutPage Debug] profile_info2:', acf.profile_info2);
-    console.log('[fetchAboutPage Debug] contactGroup:', contactGroup);
-    console.log('[fetchAboutPage Debug] contact:', {
-      email: acf.email || contactGroup.email || '',
-      instagram: acf.instagram || contactGroup.instagram || '',
-      website: acf.website || contactGroup.website || '',
-    });
 
     return {
       title: decode(page.title.rendered),

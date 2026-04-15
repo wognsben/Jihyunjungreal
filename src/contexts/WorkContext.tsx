@@ -67,13 +67,10 @@ export const WorkProvider = ({ children }: { children: ReactNode }) => {
 
       try {
   const fetchedWorks = await fetchWorks();
-  console.log('[WorkProvider] fetchedWorks:', fetchedWorks);
-  console.log('[WorkProvider] fetchedWorks.length:', fetchedWorks?.length);
 
   setWorks(fetchedWorks);
   worksLoadedRef.current = true;
-
-  console.log('[WorkProvider] works loaded complete');
+        
 } catch (err) {
   console.error('Failed to load works', err);
   setError('Failed to load works');
@@ -97,13 +94,10 @@ export const WorkProvider = ({ children }: { children: ReactNode }) => {
 
       try {
   const fetchedTexts = await fetchTexts('ko');
-  console.log('[WorkProvider] fetchedTexts:', fetchedTexts);
-  console.log('[WorkProvider] fetchedTexts.length:', fetchedTexts?.length);
 
   setTexts(fetchedTexts);
   textsLoadedRef.current = true;
 
-  console.log('[WorkProvider] texts loaded complete');
 } catch (err) {
   console.error('Failed to load texts', err);
   setError('Failed to load texts');

@@ -46,12 +46,6 @@ export const WorkDetail = ({
   const [loadingWork, setLoadingWork] = useState(false);
   const [loadWorkError, setLoadWorkError] = useState<string | null>(null);
 
-  console.log('[WorkDetail] render start');
-  console.log('[WorkDetail] workId:', workId);
-  console.log('[WorkDetail] lang:', lang);
-  console.log('[WorkDetail] currentLang:', currentLang);
-  console.log('[WorkDetail] works.length:', works?.length);
-
   // Check if mobile
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -92,10 +86,6 @@ export const WorkDetail = ({
 
   useEffect(() => {
     if (workId && lang !== 'ko' && lang !== currentLang) {
-      console.log('[WorkDetail] translateWorksByIds triggered');
-      console.log('[WorkDetail] translate target workId:', workId);
-      console.log('[WorkDetail] translate target lang:', lang);
-      translateWorksByIds([workId], lang);
     }
   }, [workId, lang, currentLang, translateWorksByIds]);
 
@@ -123,18 +113,9 @@ export const WorkDetail = ({
   const contextWork = works.find((w) => w.id === workId);
   const work = localWork || contextWork;
 
-  console.log('[WorkDetail] contextWork:', contextWork);
-  console.log('[WorkDetail] localWork:', localWork);
-  console.log('[WorkDetail] final work:', work);
-
   useEffect(() => {
-    console.log('[WorkDetail/useEffect] entered');
-    console.log('[WorkDetail/useEffect] workId:', workId);
-    console.log('[WorkDetail/useEffect] lang:', lang);
-    console.log('[WorkDetail/useEffect] contextWork:', contextWork);
 
     if (!workId) {
-      console.log('[WorkDetail/useEffect] no workId, reset state');
       setLocalWork(null);
       setLoadingWork(false);
       setLoadWorkError(null);
@@ -147,13 +128,7 @@ export const WorkDetail = ({
       contextWork?.content_jp
     );
 
-    console.log('[WorkDetail/useEffect] hasFullWorkContent:', hasFullWorkContent);
-    console.log('[WorkDetail/useEffect] contextWork?.content_rendered:', contextWork?.content_rendered);
-    console.log('[WorkDetail/useEffect] contextWork?.content_en:', contextWork?.content_en);
-    console.log('[WorkDetail/useEffect] contextWork?.content_jp:', contextWork?.content_jp);
-
     if (hasFullWorkContent && contextWork) {
-      console.log('[WorkDetail/useEffect] using contextWork directly');
       setLocalWork(contextWork);
       setLoadingWork(false);
       setLoadWorkError(null);
@@ -161,23 +136,12 @@ export const WorkDetail = ({
     }
 
     const loadSingleWork = async () => {
-      console.log('[WorkDetail/loadSingleWork] start');
-      console.log('[WorkDetail/loadSingleWork] requesting workId:', workId);
-      console.log('[WorkDetail/loadSingleWork] requesting lang:', lang);
-
       setLocalWork(null);
       setLoadingWork(true);
       setLoadWorkError(null);
 
       try {
         const fetched = await fetchWorkById(workId, lang);
-
-        console.log('[WorkDetail/loadSingleWork] fetched result:', fetched);
-        console.log('[WorkDetail/loadSingleWork] fetched?.id:', fetched?.id);
-        console.log('[WorkDetail/loadSingleWork] fetched?.content_rendered:', fetched?.content_rendered);
-        console.log('[WorkDetail/loadSingleWork] fetched?.content_en:', fetched?.content_en);
-        console.log('[WorkDetail/loadSingleWork] fetched?.content_jp:', fetched?.content_jp);
-        console.log('[WorkDetail/loadSingleWork] fetched?.galleryImages:', fetched?.galleryImages);
 
         if (fetched) {
           console.log('[WorkDetail/loadSingleWork] setLocalWork(fetched)');
@@ -212,9 +176,6 @@ export const WorkDetail = ({
   }, [selectedArticleId]);
 
           if (loadWorkError && !work) {
-    console.log('[WorkDetail] render branch: loadWorkError && !work');
-    console.log('[WorkDetail] loadWorkError:', loadWorkError);
-    console.log('[WorkDetail] workId:', workId);
 
     return (
       <div className="min-h-screen flex items-center justify-center px-6 text-center">
@@ -230,10 +191,6 @@ export const WorkDetail = ({
   }
 
     if (!work) {
-    console.log('[WorkDetail] render branch: !work');
-    console.log('[WorkDetail] loadingWork:', loadingWork);
-    console.log('[WorkDetail] loadWorkError:', loadWorkError);
-    console.log('[WorkDetail] workId:', workId);
 
     return (
       <div className="min-h-screen flex items-center justify-center">
