@@ -1,7 +1,7 @@
 
-  # jihyunjung (복사)
+  # jihyun jung
 
-  This is a code bundle for jihyunjung (복사). The original project is available at https://www.figma.com/design/xkuwfLz19ln1cH39ceOUwi/jihyunjung--%EB%B3%B5%EC%82%AC-.
+  This is a code bundle for jihyun jung. The original project is available at https://www.figma.com/design/xkuwfLz19ln1cH39ceOUwi/jihyun-jung.
 
   ## Running the code
 
