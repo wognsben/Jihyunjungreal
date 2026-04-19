@@ -19,7 +19,60 @@ interface WorkDetailProps {
   shouldRestoreGrid: boolean;
 }
 
-const cleanText = (text: string) => { if (!text) return ''; return text .replace(/<br\s*\/?>/gi, ' ') .replace(/<\/p>\s*<p[^>]*>/gi, ' ') .replace(/<[^>]+>/g, ' ') .replace(/\[caption[^\]]*\]|\[\/caption\]/gi, ' ') .replace(/caption:\s*id=["']?[^"' \]]+["']?/gi, ' ') .replace(/&nbsp;/g, ' ') .replace(/&amp;/g, '&') .replace(/&lt;/g, '<') .replace(/&gt;/g, '>') .replace(/&quot;/g, '"') .replace(/&#39;/g, "'") .replace(/&rsquo;/g, "'") .replace(/&lsquo;/g, "'") .replace(/&#8216;/g, "'") .replace(/&#8217;/g, "'") .replace(/&ldquo;/g, '"') .replace(/&rdquo;/g, '"') .replace(/&#8220;/g, '"') .replace(/&#8221;/g, '"') .replace(/&#038;/g, '&') .replace(/\s+/g, ' ') .trim(); };
+const cleanText = (text: string) => {
+  if (!text) return '';
+
+  return text
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/p>\s*<p[^>]*>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\[caption[^\]]*\]|\[\/caption\]/gi, ' ')
+    .replace(/caption:\s*id=["']?[^"' \]]+["']?/gi, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&rsquo;/g, "'")
+    .replace(/&lsquo;/g, "'")
+    .replace(/&#8216;/g, "'")
+    .replace(/&#8217;/g, "'")
+    .replace(/&ldquo;/g, '"')
+    .replace(/&rdquo;/g, '"')
+    .replace(/&#8220;/g, '"')
+    .replace(/&#8221;/g, '"')
+    .replace(/&#038;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const cleanTitleText = (text: string) => {
+  if (!text) return '';
+
+  return text
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/p>\s*<p[^>]*>/gi, ' ')
+    .replace(/\[caption[^\]]*\]|\[\/caption\]/gi, ' ')
+    .replace(/caption:\s*id=["']?[^"' \]]+["']?/gi, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&rsquo;/g, "'")
+    .replace(/&lsquo;/g, "'")
+    .replace(/&#8216;/g, "'")
+    .replace(/&#8217;/g, "'")
+    .replace(/&ldquo;/g, '"')
+    .replace(/&rdquo;/g, '"')
+    .replace(/&#8220;/g, '"')
+    .replace(/&#8221;/g, '"')
+    .replace(/&#038;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
 
 export const WorkDetail = ({
   workId,
@@ -266,17 +319,17 @@ export const WorkDetail = ({
     {/* Classic Gallery Caption: Title, Year */}
     <div className="text-center pb-4 md:pb-8 min-[1025px]:pb-10 border-b border-black/5 dark:border-white/10">
       <h1
-        className={`text-[18px] md:text-[20px] lg:text-[24px] font-normal tracking-[-0.01em] text-foreground/88 leading-[1.35] ${
-          lang === 'jp'
-            ? 'font-[var(--font-body-jp)]'
-            : lang === 'en'
-            ? 'font-[var(--font-body-en)]'
-            : 'font-[var(--font-body-ko)]'
-        }`}
-      >
-        {cleanText(title)}
-        {work.year && `, ${work.year}`}
-      </h1>
+  className={`text-[18px] md:text-[20px] lg:text-[24px] font-normal tracking-[-0.01em] text-foreground/88 leading-[1.35] ${
+    lang === 'jp'
+      ? 'font-[var(--font-body-jp)]'
+      : lang === 'en'
+      ? 'font-[var(--font-body-en)]'
+      : 'font-[var(--font-body-ko)]'
+  }`}
+>
+  {cleanTitleText(title)}
+  {work.year && `, ${work.year}`}
+</h1>
     </div>
 
     {/* Metadata - Commission only */}
@@ -552,27 +605,27 @@ export const WorkDetail = ({
                             }}
                           >
                             <div
-                              className={`flex items-baseline gap-3 md:gap-4 py-2 md:py-4 transition-all duration-300 ${
-                                hoveredArticleId === article.id
-                                  ? 'pl-6 opacity-100'
-                                  : 'pl-0 opacity-80'
-                              }`}
-                            >
-                              <span className="shrink-0 text-[10px] text-muted-foreground/60 font-[Ojuju]">
-                                {String(index + 1).padStart(2, '0')}
-                              </span>
-                              <h3
-  className={`font-light tracking-tight text-foreground/90 text-[14px] md:text-[16px] leading-snug m-0 ${
-    lang === 'jp'
-      ? 'font-[var(--font-body-jp)]'
-      : lang === 'en'
-      ? 'font-[var(--font-body-en)]'
-      : 'font-[var(--font-body-ko)]'
+  className={`flex items-baseline gap-3 md:gap-4 py-2 md:py-4 transition-all duration-300 ${
+    hoveredArticleId === article.id
+      ? 'pl-6 opacity-100'
+      : 'pl-0 opacity-80'
   }`}
 >
-                                {cleanText(displayTitle)}
-                              </h3>
-                            </div>
+  <span className="shrink-0 text-[10px] text-muted-foreground/60 font-[Ojuju]">
+    {String(index + 1).padStart(2, '0')}
+  </span>
+  <h3
+    className={`font-light tracking-tight text-foreground/90 text-[14px] md:text-[16px] leading-snug m-0 ${
+      lang === 'jp'
+        ? 'font-[var(--font-body-jp)]'
+        : lang === 'en'
+        ? 'font-[var(--font-body-en)]'
+        : 'font-[var(--font-body-ko)]'
+    }`}
+  >
+    {cleanTitleText(displayTitle)}
+  </h3>
+</div>
                           </div>
                         );
                       })}
