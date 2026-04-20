@@ -504,7 +504,10 @@ const normalizeWorkContentHtml = async (
 
 const transformWork = async (post: WPPost, lang: string): Promise<Work> => {
   const rawFeaturedImage =
-    post._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
+    typeof (post as any).thumbnail_ko === 'string'
+      ? (post as any).thumbnail_ko
+      : post._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
+
   let featuredImage = getFullSizeUrl(rawFeaturedImage);
 
   // ACF fields for multilingual support
@@ -731,13 +734,23 @@ const content_jp = raw_content_jp
       ? rawCategory.join(', ')
       : rawCategory?.label || String(rawCategory);
 
-  // EN/JP specific image overrides (ACF fields: EN_image, JP_image)
-  // Most works share the same images across languages,
-  // but a few have language-specific images set in these fields.
+    // EN/JP 대표 이미지
+  // 1순위: Code Snippets로 REST에 추가한 thumbnail_en / thumbnail_jp
+  // 2순위: 과거 ACF EN_image / JP_image
+  const restThumbnailEn =
+    typeof (post as any).thumbnail_en === 'string'
+      ? getFullSizeUrl((post as any).thumbnail_en)
+      : '';
+
+  const restThumbnailJp =
+    typeof (post as any).thumbnail_jp === 'string'
+      ? getFullSizeUrl((post as any).thumbnail_jp)
+      : '';
+
   const enImageRaw = acf.EN_image || acf.en_image || acf['EN_image'];
   const jpImageRaw = acf.JP_image || acf.jp_image || acf['JP_image'];
 
-  const thumbnail_en = enImageRaw
+  const acfThumbnailEn = enImageRaw
     ? getFullSizeUrl(
         typeof enImageRaw === 'string'
           ? enImageRaw
@@ -746,9 +759,9 @@ const content_jp = raw_content_jp
               enImageRaw.sizes?.full ||
               ''
       )
-    : undefined;
+    : '';
 
-  const thumbnail_jp = jpImageRaw
+  const acfThumbnailJp = jpImageRaw
     ? getFullSizeUrl(
         typeof jpImageRaw === 'string'
           ? jpImageRaw
@@ -757,7 +770,10 @@ const content_jp = raw_content_jp
               jpImageRaw.sizes?.full ||
               ''
       )
-    : undefined;
+    : '';
+
+  const thumbnail_en = restThumbnailEn || acfThumbnailEn || undefined;
+  const thumbnail_jp = restThumbnailJp || acfThumbnailJp || undefined;
 
   // Extract YouTube URL from ACF, meta, or content
   let youtubeUrl: string | undefined;
@@ -1266,8 +1282,11 @@ const transformHistoryItem = (post: WPPost): HistoryItem => {
 
 const transformWorkListItem = (post: WPPost): Work => {
   const rawFeaturedImage =
-    post._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
-  let featuredImage = getFullSizeUrl(rawFeaturedImage);
+  typeof (post as any).thumbnail_ko === 'string'
+    ? (post as any).thumbnail_ko
+    : '';
+
+let featuredImage = getFullSizeUrl(rawFeaturedImage);
 
   const acf = post.acf || {};
 
@@ -1343,10 +1362,23 @@ const transformWorkListItem = (post: WPPost): Work => {
       ? rawCategory.join(', ')
       : rawCategory?.label || String(rawCategory);
 
+    // EN/JP 대표 이미지
+  // 1순위: Code Snippets로 REST에 추가한 thumbnail_en / thumbnail_jp
+  // 2순위: 과거 ACF EN_image / JP_image
+  const restThumbnailEn =
+    typeof (post as any).thumbnail_en === 'string'
+      ? getFullSizeUrl((post as any).thumbnail_en)
+      : '';
+
+  const restThumbnailJp =
+    typeof (post as any).thumbnail_jp === 'string'
+      ? getFullSizeUrl((post as any).thumbnail_jp)
+      : '';
+
   const enImageRaw = acf.EN_image || acf.en_image || acf['EN_image'];
   const jpImageRaw = acf.JP_image || acf.jp_image || acf['JP_image'];
 
-  const thumbnail_en = enImageRaw
+  const acfThumbnailEn = enImageRaw
     ? getFullSizeUrl(
         typeof enImageRaw === 'string'
           ? enImageRaw
@@ -1355,9 +1387,9 @@ const transformWorkListItem = (post: WPPost): Work => {
               enImageRaw.sizes?.full ||
               ''
       )
-    : undefined;
+    : '';
 
-  const thumbnail_jp = jpImageRaw
+  const acfThumbnailJp = jpImageRaw
     ? getFullSizeUrl(
         typeof jpImageRaw === 'string'
           ? jpImageRaw
@@ -1366,7 +1398,10 @@ const transformWorkListItem = (post: WPPost): Work => {
               jpImageRaw.sizes?.full ||
               ''
       )
-    : undefined;
+    : '';
+
+  const thumbnail_en = restThumbnailEn || acfThumbnailEn || undefined;
+  const thumbnail_jp = restThumbnailJp || acfThumbnailJp || undefined;
 
   let youtubeUrl: string | undefined;
   if ((post as any).acf?.youtube_url) {
