@@ -10,29 +10,9 @@ import { Work } from '@/contexts/WorkContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
 import { getLocalizedThumbnail } from '@/utils/getLocalizedImage';
-import { toCdnUrl } from '@/utils/toCdnUrl';
 import { motion, AnimatePresence, useMotionValue, animate } from 'motion/react';
 
-const extractFirstImageFromHtml = (html: string): string => {
-  if (!html) return '';
-
-  const match = html.match(/<img[^>]+src="([^">]+)"/i);
-  return match?.[1]?.trim() || '';
-};
-
 const getLocalizedGridImage = (work: any, lang: 'ko' | 'en' | 'jp'): string => {
-  const koContent = work.content_rendered || '';
-
-  const localizedContent =
-    lang === 'en'
-      ? (work.content_en?.trim() || koContent)
-      : lang === 'jp'
-      ? (work.content_jp?.trim() || koContent)
-      : koContent;
-
-  const firstImage = extractFirstImageFromHtml(localizedContent);
-  if (firstImage) return toCdnUrl(firstImage);
-
   return getLocalizedThumbnail(work, lang) || '';
 };
 

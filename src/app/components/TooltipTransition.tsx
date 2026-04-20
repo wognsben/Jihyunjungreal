@@ -75,31 +75,14 @@ export const TooltipTransition: React.FC<TooltipTransitionProps> = ({
   }, [hoveredWorkId, works]);
 
   const images = useMemo(() => {
-    if (!activeWork) return [];
+  if (!activeWork) return [];
 
-    const koContent = activeWork.content_rendered || '';
+  const localizedImages = getLocalizedGalleryImages(activeWork as any, lang)
+    .filter(Boolean)
+    .map((image) => toCdnUrl(image)) as string[];
 
-    const localizedContent =
-      lang === 'en'
-        ? activeWork.content_en?.trim() || koContent
-        : lang === 'jp'
-        ? activeWork.content_jp?.trim() || koContent
-        : koContent;
-
-    const htmlImages = extractImagesFromHtml(localizedContent);
-
-    // 1순위: 현재 언어 HTML에서 추출된 이미지
-    if (htmlImages.length > 0) {
-      return Array.from(new Set(htmlImages));
-    }
-
-    // fallback: 기존 galleryImages 기반
-    const fallbackImages = getLocalizedGalleryImages(activeWork as any, lang)
-      .filter(Boolean)
-      .map((image) => toCdnUrl(image)) as string[];
-
-    return Array.from(new Set(fallbackImages));
-  }, [activeWork, lang]);
+  return Array.from(new Set(localizedImages));
+}, [activeWork, lang]);
 
   // Slideshow
   useEffect(() => {
