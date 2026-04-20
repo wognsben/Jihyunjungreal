@@ -144,14 +144,19 @@ const resolveGalleryShortcodes = async (html: string): Promise<string> => {
       },
     });
     for (const item of response.data) {
-      // Use full-size source_url, strip WP resolution suffix for maximum quality
-      const fullUrl = getFullSizeUrl(
-        item.media_details?.sizes?.full?.source_url || item.source_url || ''
-      );
-      const caption =
-        item.caption?.rendered?.replace(/<[^>]+>/g, '').trim() || '';
-      mediaMap.set(String(item.id), { url: fullUrl, caption });
-    }
+  // Use full-size source_url, strip WP resolution suffix for maximum quality
+  const fullUrl = getFullSizeUrl(
+    item.media_details?.sizes?.full?.source_url || item.source_url || ''
+  );
+
+  const rawCaption = item.caption?.rendered || '';
+  const safeCaption = escapeNonHtmlAngleBrackets(rawCaption);
+  const caption = he.decode(
+    safeCaption.replace(/<[^>]+>/g, '').trim()
+  );
+
+  mediaMap.set(String(item.id), { url: fullUrl, caption });
+}
   } catch (error) {
     console.error('Error fetching gallery media:', error);
     return html; // Return original if API fails
@@ -320,7 +325,13 @@ const extractImagesAndCaptions = (
   while ((match = figureRegex.exec(html)) !== null) {
     const rawUrl = match[1];
     const url = getFullSizeUrl(rawUrl);
-    const caption = match[2] ? match[2].replace(/<[^>]+>/g, '').trim() : '';
+    const rawCaption = match[2] || '';
+
+const safeCaption = escapeNonHtmlAngleBrackets(rawCaption);
+
+const caption = safeCaption
+  .replace(/<[^>]+>/g, '')
+  .trim();
 
     results.push({ url, caption });
     processedUrls.add(rawUrl);
@@ -336,11 +347,18 @@ const extractImagesAndCaptions = (
     const url = getFullSizeUrl(rawUrl);
 
     if (!processedUrls.has(rawUrl) && !processedUrls.has(url)) {
-      const caption = match[2].replace(/<[^>]+>/g, '').trim();
-      results.push({ url, caption });
-      processedUrls.add(rawUrl);
-      processedUrls.add(url);
-    }
+  const rawCaption = match[2] || '';
+
+  const safeCaption = escapeNonHtmlAngleBrackets(rawCaption);
+
+  const caption = safeCaption
+    .replace(/<[^>]+>/g, '')
+    .trim();
+
+  results.push({ url, caption });
+  processedUrls.add(rawUrl);
+  processedUrls.add(url);
+}
   }
 
   // 3. Standalone <img> tags (no caption wrapper)
@@ -430,11 +448,18 @@ const extractImageCaptions = (html: string): string[] => {
   let figureMatch;
 
   while ((figureMatch = figureRegex.exec(html)) !== null) {
-    const caption = figureMatch[1]
-      ? decode(figureMatch[1].replace(/<[^>]+>/g, '').trim())
-      : '';
-    captions.push(caption);
-  }
+  const rawCaption = figureMatch[1] || '';
+
+  const safeCaption = escapeNonHtmlAngleBrackets(rawCaption);
+
+  const caption = decode(
+    safeCaption
+      .replace(/<[^>]+>/g, '')
+      .trim()
+  );
+
+  captions.push(caption);
+}
 
   // If no figures found, try WordPress caption shortcode: [caption]...[/caption]
   if (captions.length === 0) {
@@ -446,13 +471,18 @@ const extractImageCaptions = (html: string): string[] => {
       // Extract text after the img tag (the caption text)
       const textMatch = captionContent.match(/<\/a>(.+?)$|<img[^>]+>(.+?)$/s);
       if (textMatch) {
-        const caption = (textMatch[1] || textMatch[2] || '')
-          .replace(/<[^>]+>/g, '')
-          .trim();
-        captions.push(decode(caption));
-      } else {
-        captions.push(''); // No caption for this image
-      }
+  const rawCaption = textMatch[1] || textMatch[2] || '';
+
+  const safeCaption = escapeNonHtmlAngleBrackets(rawCaption);
+
+  const caption = safeCaption
+    .replace(/<[^>]+>/g, '')
+    .trim();
+
+  captions.push(decode(caption));
+} else {
+  captions.push('');
+}
     }
   }
 
