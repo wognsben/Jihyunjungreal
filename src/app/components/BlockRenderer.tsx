@@ -197,6 +197,26 @@ if (customFootnoteRefMatch || customFootnoteBodyMatch) {
   }
 };
 
+const escapeNonHtmlAngleBrackets = (html: string): string => {
+  if (!html) return html;
+
+  return html.replace(/<([^<>]+)>/g, (match, inner) => {
+    const trimmed = inner.trim();
+
+    // 정상 HTML 태그처럼 보이면 그대로 둠
+    if (
+      /^\/?[a-zA-Z][\w:-]*(\s+[^<>]*)?$/.test(trimmed) ||
+      /^!--[\s\S]*--$/.test(trimmed) ||
+      /^\?[a-zA-Z][\s\S]*\?$/.test(trimmed)
+    ) {
+      return match;
+    }
+
+    // HTML 태그가 아닌 꺾쇠 괄호 텍스트는 escape
+    return `&lt;${inner}&gt;`;
+  });
+};
+
 // ============================================================
 // HTML Sanitization
 // ============================================================
@@ -209,10 +229,14 @@ const sanitizeHtml = (html: string): string => {
     const imgMatch = inner.match(/<img[^>]+>/i);
     const imgTag = imgMatch ? imgMatch[0] : '';
 
-    const captionText = inner
-      .replace(/<img[^>]+>/i, '')
-      .replace(/<\/?a[^>]*>/gi, '')
-      .trim();
+    const rawCaptionText = inner
+  .replace(/<img[^>]+>/i, '')
+  .replace(/<\/?a[^>]*>/gi, '')
+  .trim();
+
+const safeCaptionText = escapeNonHtmlAngleBrackets(rawCaptionText);
+
+const captionText = safeCaptionText;
 
     const alignMatch = captionAttrs.match(/align=["']?(alignleft|alignright|aligncenter)["']?/i);
     const widthMatch = captionAttrs.match(/width=["']?(\d+)["']?/i);
@@ -1086,33 +1110,36 @@ const getImageMetaFromHtml = (
   const styleMaxWidthMatch = html.match(/style=["'][^"']*max-width:\s*([^;"']+)/i);
 
   let classWidth: string | undefined;
-if (/\bsize-thumbnail\b/i.test(html)) classWidth = '150px';
-else if (/\bsize-medium\b/i.test(html)) classWidth = '300px';
-else if (/\bsize-large\b/i.test(html)) classWidth = '1024px';
-// size-full은 강제로 100% 주지 않음
+  if (/\bsize-thumbnail\b/i.test(html)) classWidth = '150px';
+  else if (/\bsize-medium\b/i.test(html)) classWidth = '300px';
+  else if (/\bsize-large\b/i.test(html)) classWidth = '1024px';
 
   let align: ExtractedImage['align'] = fallbackAlign;
 
-if (/\balignleft\b/i.test(html) || /float:\s*left/i.test(html)) {
-  align = 'left';
-} else if (/\balignright\b/i.test(html) || /float:\s*right/i.test(html)) {
-  align = 'right';
-} else if (
-  /\baligncenter\b/i.test(html) ||
-  (/margin-left:\s*auto/i.test(html) && /margin-right:\s*auto/i.test(html))
-) {
-  align = 'center';
-} else if (/\balignwide\b/i.test(html)) {
-  align = 'wide';
-} else if (/\balignfull\b/i.test(html)) {
-  align = 'full';
-}
+  if (/\balignleft\b/i.test(html) || /float:\s*left/i.test(html)) {
+    align = 'left';
+  } else if (/\balignright\b/i.test(html) || /float:\s*right/i.test(html)) {
+    align = 'right';
+  } else if (
+    /\baligncenter\b/i.test(html) ||
+    (/margin-left:\s*auto/i.test(html) && /margin-right:\s*auto/i.test(html))
+  ) {
+    align = 'center';
+  } else if (/\balignwide\b/i.test(html)) {
+    align = 'wide';
+  } else if (/\balignfull\b/i.test(html)) {
+    align = 'full';
+  }
+
+  const rawCaption = captionMatch?.[1] || '';
+  const safeCaption = escapeNonHtmlAngleBrackets(rawCaption);
+  const caption = decodeHtmlEntities(
+    safeCaption.replace(/<[^>]+>/g, '').trim()
+  );
 
   return {
     src,
-    caption: captionMatch
-      ? decodeHtmlEntities(captionMatch[1].replace(/<[^>]+>/g, '').trim())
-      : '',
+    caption,
     width: widthMatch ? Number(widthMatch[1]) : undefined,
     height: heightMatch ? Number(heightMatch[1]) : undefined,
     styleWidth: styleWidthMatch ? styleWidthMatch[1].trim() : undefined,

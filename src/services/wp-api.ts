@@ -150,10 +150,17 @@ const resolveGalleryShortcodes = async (html: string): Promise<string> => {
   );
 
   const rawCaption = item.caption?.rendered || '';
-  const safeCaption = escapeNonHtmlAngleBrackets(rawCaption);
-  const caption = he.decode(
-    safeCaption.replace(/<[^>]+>/g, '').trim()
-  );
+
+// 1. 먼저 decode
+const decodedCaption = he.decode(rawCaption);
+
+// 2. 그 다음에 escape (여기 중요)
+const safeCaption = escapeNonHtmlAngleBrackets(decodedCaption);
+
+// 3. 이제 태그 제거
+const caption = safeCaption
+  .replace(/<[^>]+>/g, '')
+  .trim();
 
   mediaMap.set(String(item.id), { url: fullUrl, caption });
 }
@@ -193,19 +200,68 @@ const escapeHtmlAttr = (value: string = ''): string =>
 const escapeNonHtmlAngleBrackets = (html: string): string => {
   if (!html) return html;
 
+  const allowedTags = new Set([
+    'a',
+    'abbr',
+    'b',
+    'blockquote',
+    'br',
+    'cite',
+    'code',
+    'del',
+    'div',
+    'em',
+    'figcaption',
+    'figure',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'hr',
+    'i',
+    'iframe',
+    'img',
+    'li',
+    'mark',
+    'ol',
+    'p',
+    'pre',
+    's',
+    'small',
+    'source',
+    'span',
+    'strong',
+    'sub',
+    'sup',
+    'u',
+    'ul',
+    'video',
+  ]);
+
   return html.replace(/<([^<>]+)>/g, (match, inner) => {
     const trimmed = inner.trim();
 
-    // 정상 HTML 태그처럼 보이면 그대로 둠
-    if (
-      /^\/?[a-zA-Z][\w:-]*(\s+[^<>]*)?$/.test(trimmed) ||
-      /^!--[\s\S]*--$/.test(trimmed) ||
-      /^\?[a-zA-Z][\s\S]*\?$/.test(trimmed)
-    ) {
+    if (!trimmed) return match;
+
+    if (/^!--[\s\S]*--$/.test(trimmed)) {
       return match;
     }
 
-    // HTML 태그가 아닌 꺾쇠 괄호 텍스트는 escape
+    if (/^\?[a-zA-Z][\s\S]*\?$/.test(trimmed)) {
+      return match;
+    }
+
+    const tagMatch = trimmed.match(/^\/?\s*([a-zA-Z][a-zA-Z0-9:-]*)\b/);
+    if (tagMatch) {
+      const tagName = tagMatch[1].toLowerCase();
+
+      if (allowedTags.has(tagName)) {
+        return match;
+      }
+    }
+
     return `&lt;${inner}&gt;`;
   });
 };
@@ -582,50 +638,64 @@ const transformWork = async (post: WPPost, lang: string): Promise<Work> => {
     ? acfGalleryJp
     : acfGalleryKo;
 
-if (activeGallery && Array.isArray(activeGallery) && activeGallery.length > 0) {
-    // ACF Gallery exists - use it as primary source
-    activeGallery.forEach((imageObj: any, index: number) => {
-      if (imageObj) {
-        // Handle both Image Object and Image Array return formats
-        const imageUrl =
-          typeof imageObj === 'string'
-            ? imageObj
-            : imageObj.url || imageObj.sizes?.large || imageObj.sizes?.full || '';
-
-        const caption =
-          typeof imageObj === 'object' ? imageObj.caption || '' : '';
-
-        if (imageUrl) {
-          galleryImages.push(getFullSizeUrl(imageUrl));
-          imageCredits.push(caption ? decode(caption) : '');
-        }
-      }
-    });
-
-  } else {
-
-    // Fallback: Extract images and captions together from content
-    const fallbackContent =
+const fallbackContent =
   lang === 'en'
     ? (raw_content_en || post.content.rendered)
     : lang === 'jp'
     ? (raw_content_jp || post.content.rendered)
     : post.content.rendered;
 
-const imagesAndCaptions = extractImagesAndCaptions(fallbackContent);
+const extractedImagesAndCaptions = extractImagesAndCaptions(fallbackContent);
+const extractedCaptionMap = new Map<string, string>();
 
-    // Separate into arrays
-    galleryImages = imagesAndCaptions.map((item) => item.url);
-    const rawCaptions = imagesAndCaptions.map((item) => item.caption);
+extractedImagesAndCaptions.forEach((item) => {
+  extractedCaptionMap.set(getFullSizeUrl(item.url), item.caption || '');
+});
 
-    // Store raw captions (multilingual parsing happens at render time)
-    imageCredits = rawCaptions;
+if (activeGallery && Array.isArray(activeGallery) && activeGallery.length > 0) {
+  // ACF Gallery exists - use it as primary source for image order
+  activeGallery.forEach((imageObj: any) => {
+    if (imageObj) {
+      // Handle both Image Object and Image Array return formats
+      const imageUrl =
+        typeof imageObj === 'string'
+          ? imageObj
+          : imageObj.url || imageObj.sizes?.large || imageObj.sizes?.full || '';
 
-    // Fallback: If no featured image, use first content image as thumbnail
-    if (!featuredImage && galleryImages.length > 0) {
-      featuredImage = galleryImages[0];
+      if (imageUrl) {
+        const fullImageUrl = getFullSizeUrl(imageUrl);
+        const acfCaption =
+          typeof imageObj === 'object' ? imageObj.caption || '' : '';
+        const extractedCaption = extractedCaptionMap.get(fullImageUrl) || '';
+
+        galleryImages.push(fullImageUrl);
+
+        imageCredits.push(
+          extractedCaption
+            ? extractedCaption
+            : acfCaption
+            ? decode(acfCaption)
+            : ''
+        );
+      }
     }
+  });
+
+  // ACF Gallery exists but featured image is missing
+  if (!featuredImage && galleryImages.length > 0) {
+    featuredImage = galleryImages[0];
   }
+
+} else {
+  // Fallback: Extract images and captions together from content
+  galleryImages = extractedImagesAndCaptions.map((item) => item.url);
+  imageCredits = extractedImagesAndCaptions.map((item) => item.caption);
+
+  // Fallback: If no featured image, use first content image as thumbnail
+  if (!featuredImage && galleryImages.length > 0) {
+    featuredImage = galleryImages[0];
+  }
+}
 
     // Prefer REST field first, then embedded taxonomy, then post date fallback
   let yearFromCategory: number | undefined =
