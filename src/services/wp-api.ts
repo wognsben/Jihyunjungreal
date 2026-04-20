@@ -594,26 +594,32 @@ const imagesAndCaptions = extractImagesAndCaptions(fallbackContent);
     }
   }
 
-  // Try to find "Year" from work_category taxonomy
-  let yearFromCategory: number | undefined;
+    // Prefer REST field first, then embedded taxonomy, then post date fallback
+  let yearFromCategory: number | undefined =
+    typeof (post as any).work_year === 'number'
+      ? (post as any).work_year
+      : undefined;
 
-  const terms = post._embedded?.['wp:term'];
-  if (terms) {
-    for (const taxonomyTerms of terms) {
-      if (
-        taxonomyTerms.length > 0 &&
-        taxonomyTerms[0].taxonomy === 'work_category'
-      ) {
-        taxonomyTerms.forEach((t: any) => {
-          const name = t.name;
-          if (/^\d{4}/.test(name)) {
-            const match = name.match(/^(\d{4})/);
-            if (match) {
-              yearFromCategory = parseInt(match[1], 10);
+  if (yearFromCategory === undefined) {
+    const terms = post._embedded?.['wp:term'];
+
+    if (terms) {
+      for (const taxonomyTerms of terms) {
+        if (
+          taxonomyTerms.length > 0 &&
+          taxonomyTerms[0].taxonomy === 'work_category'
+        ) {
+          taxonomyTerms.forEach((t: any) => {
+            const name = t.name;
+            if (/^\d{4}/.test(name)) {
+              const match = name.match(/^(\d{4})/);
+              if (match) {
+                yearFromCategory = parseInt(match[1], 10);
+              }
             }
-          }
-        });
-        break;
+          });
+          break;
+        }
       }
     }
   }
@@ -1279,25 +1285,31 @@ const transformWorkListItem = (post: WPPost): Work => {
     ? decode(acf.one_line_info_jp)
     : oneLineInfo_ko;
 
-  let yearFromCategory: number | undefined;
-  const terms = post._embedded?.['wp:term'];
+    let yearFromCategory: number | undefined =
+    typeof (post as any).work_year === 'number'
+      ? (post as any).work_year
+      : undefined;
 
-  if (terms) {
-    for (const taxonomyTerms of terms) {
-      if (
-        taxonomyTerms.length > 0 &&
-        taxonomyTerms[0].taxonomy === 'work_category'
-      ) {
-        taxonomyTerms.forEach((t: any) => {
-          const name = t.name;
-          if (/^\d{4}/.test(name)) {
-            const match = name.match(/^(\d{4})/);
-            if (match) {
-              yearFromCategory = parseInt(match[1], 10);
+  if (yearFromCategory === undefined) {
+    const terms = post._embedded?.['wp:term'];
+
+    if (terms) {
+      for (const taxonomyTerms of terms) {
+        if (
+          taxonomyTerms.length > 0 &&
+          taxonomyTerms[0].taxonomy === 'work_category'
+        ) {
+          taxonomyTerms.forEach((t: any) => {
+            const name = t.name;
+            if (/^\d{4}/.test(name)) {
+              const match = name.match(/^(\d{4})/);
+              if (match) {
+                yearFromCategory = parseInt(match[1], 10);
+              }
             }
-          }
-        });
-        break;
+          });
+          break;
+        }
       }
     }
   }

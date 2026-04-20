@@ -1,7 +1,7 @@
 
-  # jihyun jung
+  # jihyunjung
 
-  This is a code bundle for jihyun jung. The original project is available at https://www.figma.com/design/xkuwfLz19ln1cH39ceOUwi/jihyun-jung.
+  This is a code bundle for jihyunjung. The original project is available at https://www.figma.com/design/xkuwfLz19ln1cH39ceOUwi/jihyunjung.
 
   ## Running the code
 
