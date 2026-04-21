@@ -1699,8 +1699,6 @@ export const fetchWorkById = async (
     return workDetailCache.get(cacheKey)!;
   }
 
-  console.log('[fetchWorkById] cache miss:', cacheKey);
-
   try {
     const response = await api.get(`/work/${id}`, {
       params: { _embed: 1 },
@@ -1893,34 +1891,68 @@ const stripHtmlToText = (html: string): string => {
   return text.trim();
 };
 
+export interface MainIndexPageData {
+  slides: MainIndexSlide[];
+  mobileSlides?: MainIndexSlide[];
+}
+
 export const fetchMainIndexPage = async (
   lang: 'ko' | 'en' | 'jp'
 ): Promise<MainIndexPageData> => {
   try {
-    const res = await api.get('/pages', {
+    const res = await api.get('/main_index', {
       params: {
-        slug: 'main-index',
+        per_page: 1,
         _embed: true,
+        orderby: 'modified',
+        order: 'desc',
       },
     });
 
-    const page = res.data?.[0];
-    if (!page) return { slides: [] };
+    const post = Array.isArray(res.data) ? res.data[0] : null;
 
-    const content = page.content?.rendered || '';
+    if (!post) {
+      return { slides: [], mobileSlides: [] };
+    }
 
-    const images = extractImagesFromContent(content);
+    const acf = post.acf || {};
 
-    const slides = images.map((url) => ({
+    const desktopContent =
+      typeof post?.content?.rendered === 'string'
+        ? post.content.rendered
+        : '';
+
+    const mobileContent =
+      typeof acf.main_index_mobile === 'string'
+        ? acf.main_index_mobile
+        : '';
+
+    const desktopImages = extractImagesFromContent(desktopContent)
+      .map((url) => getFullSizeUrl(url))
+      .filter(Boolean);
+
+    const mobileImages = extractImagesFromContent(mobileContent)
+      .map((url) => getFullSizeUrl(url))
+      .filter(Boolean);
+
+    const slides = desktopImages.map((url) => ({
       image: url,
       title: '',
       info: '',
     }));
 
-    return { slides };
+    const mobileSlides = mobileImages.map((url) => ({
+      image: url,
+      title: '',
+      info: '',
+    }));
 
+    return {
+      slides,
+      mobileSlides,
+    };
   } catch (error) {
     console.error('fetchMainIndexPage error:', error);
-    return { slides: [] };
+    return { slides: [], mobileSlides: [] };
   }
 };

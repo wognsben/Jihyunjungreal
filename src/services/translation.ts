@@ -25,7 +25,7 @@ const STATS_KEY = 'translation_stats';
 
 // Log translation service status
 if (typeof window !== 'undefined') {
-  console.log('✅ [Translation] Service loaded with MyMemory API (CORS-enabled)');
+  console.log('[Translation] Service loaded with MyMemory API (CORS-enabled)');
 }
 
 // Language codes for MyMemory API
@@ -125,7 +125,6 @@ export const clearTranslationCache = (): void => {
       }
     });
     localStorage.removeItem(STATS_KEY);
-    console.log('[Translation] Cache cleared');
   } catch (error) {
     console.error('[Translation] Cache clear error:', error);
   }
@@ -181,13 +180,11 @@ export const translate = async (text: string, targetLang: Language): Promise<str
   try {
     // Check cache first
     const cached = getCache(text, 'ko', targetLang);
-    if (cached) {
-      console.log(`[Translation] Cache hit: ${text.substring(0, 30)}...`);
-      return cached;
-    }
+if (cached) {
+  return cached;
+}
 
     // Call MyMemory API
-    console.log(`[Translation] Translating to ${targetLang}: ${text.substring(0, 30)}...`);
     const translated = await callMyMemoryAPI(text, targetLang);
     
     // Cache the result
@@ -195,13 +192,9 @@ export const translate = async (text: string, targetLang: Language): Promise<str
     
     return translated;
   } catch (error) {
-    console.error('[Translation] Error:', error);
-    
-    // Fallback to original Korean text
-    console.warn(`[Translation] Fallback to original: ${text.substring(0, 30)}...`);
-    return text;
-  }
-};
+  console.error('[Translation] Error:', error);
+  return text;
+}
 
 /**
  * Translate multiple texts in batch (with rate limiting)

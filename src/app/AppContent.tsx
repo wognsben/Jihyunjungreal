@@ -16,6 +16,21 @@ import { preloadAboutData } from '@/app/components/About';
 
 type View = 'index' | 'work' | 'work-detail' | 'about' | 'text' | 'text-detail';
 
+const shouldUseMobileMainIndexSlides = () => {
+  if (typeof window === 'undefined') return false;
+
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const isPortrait = height >= width;
+
+  // iPhone 16  : 393pt
+  // iPhone 16 Pro : 402pt
+  // 약간의 오차를 감안해서 범위를 조금만 여유 있게 둠
+  const isIphone16Range = width >= 390 && width <= 405;
+
+  return isPortrait && isIphone16Range;
+};
+
 export const AppContent = () => {
   const { lang } = useLanguage();
   const {
@@ -67,24 +82,33 @@ export const AppContent = () => {
     selectedWorkIdRef.current = selectedWorkId;
   }, [selectedWorkId]);
 
-  useEffect(() => {
+    useEffect(() => {
     selectedTextIdRef.current = selectedTextId;
   }, [selectedTextId]);
 
-  // ✅ main index slides fetch
+  // main index slides fetch
   useEffect(() => {
     let isMounted = true;
 
-    const loadMainSlides = async () => {
+    const applySlides = async () => {
       setIsMainSlidesLoading(true);
 
       try {
         const data = await fetchMainIndexPage(lang);
-        if (isMounted) {
-          setMainSlides(data.slides || []);
-        }
+
+        if (!isMounted) return;
+
+        const useMobileSlides = shouldUseMobileMainIndexSlides();
+
+        const nextSlides =
+          useMobileSlides && data.mobileSlides && data.mobileSlides.length > 0
+            ? data.mobileSlides
+            : data.slides || [];
+
+        setMainSlides(nextSlides);
       } catch (error) {
         console.error('Failed to load main index slides:', error);
+
         if (isMounted) {
           setMainSlides([]);
         }
@@ -95,16 +119,25 @@ export const AppContent = () => {
       }
     };
 
-    loadMainSlides();
+    applySlides();
+
+    const handleResize = () => {
+      applySlides();
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
 
     return () => {
       isMounted = false;
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
     };
   }, [lang]);
 
   useEffect(() => {
-  preloadAboutData();
-}, []);
+    preloadAboutData();
+  }, []);
   
   useEffect(() => {
   ensureWorksLoaded().catch((error) => {
@@ -130,7 +163,7 @@ export const AppContent = () => {
   }
 }, [currentView, ensureWorksLoaded, ensureTextsLoaded]);
 
-  // ✅ app 시작 시 About 데이터 미리 로드
+  // app 시작 시 About 데이터 미리 로드
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -186,7 +219,7 @@ export const AppContent = () => {
 setSelectedWorkId(null);
 setCurrentView('text-detail');
         
-// 🔥 fresh일 때만 top
+// fresh일 때만 top
 if (!isReturningToTextDetail) {
   window.scrollTo(0, 0);
 }
@@ -245,7 +278,7 @@ return;
         setSelectedWorkId(workId);
         setSelectedTextId(null);
         setCurrentView('work-detail');
-        // 🔥 fresh detail 진입이면 딱 1번만 top
+        // fresh detail 진입이면 딱 1번만 top
 if (!isReturningToWorkDetail) {
   window.scrollTo(0, 0);
 }

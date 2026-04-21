@@ -294,10 +294,7 @@ export const Header = ({
                   <span key={language.code} className="flex items-center gap-2">
                     <button
                       onClick={() => {
-                        console.log(
-                          `[UI Interaction] Language button clicked: ${language.code}`
-                        );
-                        setLang(language.code);
+                      setLang(language.code);
                       }}
                       className={`text-[10px] md:text-xs uppercase tracking-[0.06em] transition-all font-light cursor-pointer select-none p-2 -m-2 ${
                         lang === language.code

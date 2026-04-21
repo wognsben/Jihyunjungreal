@@ -3,7 +3,7 @@ import { Footer } from '@/app/components/Footer';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useWorks } from '@/contexts/WorkContext';
 import { ContactModal } from '@/app/components/ContactModal';
-import { AboutData, HistoryItem, fetchAboutPage, fetchHistoryItems } from '@/services/wp-api';
+import { AboutData, fetchAboutPage } from '@/services/wp-api';
 import { TooltipTransition } from '@/app/components/TooltipTransition';
 import { Work } from '@/types/work';
 import gsap from 'gsap';
@@ -16,7 +16,6 @@ const ABOUT_SCROLL_STORAGE_KEY = 'aboutScrollTop';
 const ABOUT_FRESH_ENTRY_KEY = 'aboutFreshEntry';
 
 let aboutDataCache: AboutData | null = null;
-let historyItemsCache: HistoryItem[] = [];
 let aboutDataPromise: Promise<void> | null = null;
 
 export const preloadAboutData = async () => {
@@ -24,13 +23,8 @@ export const preloadAboutData = async () => {
 
   if (!aboutDataPromise) {
     aboutDataPromise = (async () => {
-      const [about, history] = await Promise.all([
-        fetchAboutPage(),
-        fetchHistoryItems(),
-      ]);
-
+      const about = await fetchAboutPage();
       aboutDataCache = about;
-      historyItemsCache = history;
     })();
   }
 
@@ -363,7 +357,6 @@ export const About = () => {
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   const [aboutData, setAboutData] = useState<AboutData | null>(aboutDataCache);
-  const [historyItems, setHistoryItems] = useState<HistoryItem[]>(historyItemsCache);
   const [loading, setLoading] = useState(!aboutDataCache);
 
     const containerRef = useRef<HTMLDivElement>(null);
@@ -400,20 +393,14 @@ export const About = () => {
 
   if (aboutDataCache) {
     setAboutData(aboutDataCache);
-    setHistoryItems(historyItemsCache);
     setLoading(false);
     return;
   }
 
   if (!aboutDataPromise) {
     aboutDataPromise = (async () => {
-      const [about, history] = await Promise.all([
-        fetchAboutPage(),
-        fetchHistoryItems(),
-      ]);
-
+      const about = await fetchAboutPage();
       aboutDataCache = about;
-      historyItemsCache = history;
     })();
   }
 
@@ -421,7 +408,6 @@ export const About = () => {
     .then(() => {
       if (!isMounted) return;
       setAboutData(aboutDataCache);
-      setHistoryItems(historyItemsCache);
       setLoading(false);
     })
     .catch((error) => {
@@ -558,8 +544,6 @@ export const About = () => {
 
     const transformed = transformBioContent(rawContent, works, lang);
 
-    console.log('[About Debug] transformed:', transformed);
-
     if (
       lang !== 'ko' &&
       !(lang === 'en' && aboutData?.content_en) &&
@@ -680,17 +664,6 @@ export const About = () => {
   void observerRef;
   void isManualHover;
   void isMobile;
-
-  const groupedHistory = historyItems.reduce((acc, item) => {
-    const year = item.year;
-    if (!acc[year]) acc[year] = [];
-    acc[year].push(item);
-    return acc;
-  }, {} as Record<string, HistoryItem[]>);
-
-  void groupedHistory;
-  const sortedYears = Object.keys(groupedHistory).sort((a, b) => parseInt(b) - parseInt(a));
-  void sortedYears;
 
   const contactLinks = aboutData?.contact
     ? [

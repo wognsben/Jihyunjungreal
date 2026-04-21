@@ -137,11 +137,6 @@ export const WorkDetail = ({
     };
   }, [selectedArticleId]);
 
-  useEffect(() => {
-    if (workId && lang !== 'ko' && lang !== currentLang) {
-    }
-  }, [workId, lang, currentLang, translateWorksByIds]);
-
   // Cursor Follower Logic for Text List
   useEffect(() => {
     const handleWindowMouseMove = (e: MouseEvent) => {
@@ -189,28 +184,25 @@ export const WorkDetail = ({
     }
 
     const loadSingleWork = async () => {
-      setLocalWork(null);
-      setLoadingWork(true);
-      setLoadWorkError(null);
+  setLocalWork(null);
+  setLoadingWork(true);
+  setLoadWorkError(null);
 
-      try {
-        const fetched = await fetchWorkById(workId, lang);
+  try {
+    const fetched = await fetchWorkById(workId, lang);
 
-        if (fetched) {
-          console.log('[WorkDetail/loadSingleWork] setLocalWork(fetched)');
-          setLocalWork(fetched);
-        } else {
-          console.log('[WorkDetail/loadSingleWork] fetched is null');
-          setLoadWorkError('Work not found on server');
-        }
-      } catch (err) {
-        console.error('[WorkDetail/loadSingleWork] error:', err);
-        setLoadWorkError('Failed to load work');
-      } finally {
-        console.log('[WorkDetail/loadSingleWork] finally -> setLoadingWork(false)');
-        setLoadingWork(false);
-      }
-    };
+    if (fetched) {
+      setLocalWork(fetched);
+    } else {
+      setLoadWorkError('Work not found on server');
+    }
+  } catch (err) {
+    console.error('[WorkDetail/loadSingleWork] error:', err);
+    setLoadWorkError('Failed to load work');
+  } finally {
+    setLoadingWork(false);
+  }
+};
 
     loadSingleWork();
   }, [workId, contextWork, lang]);

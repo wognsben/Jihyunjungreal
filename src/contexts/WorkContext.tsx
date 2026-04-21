@@ -61,7 +61,6 @@ export const WorkProvider = ({ children }: { children: ReactNode }) => {
     if (worksPromiseRef.current) return worksPromiseRef.current;
 
     worksPromiseRef.current = (async () => {
-      console.log('[WorkProvider] Loading works...');
       setIsWorksLoading(true);
       setError(null);
 
@@ -88,7 +87,6 @@ export const WorkProvider = ({ children }: { children: ReactNode }) => {
     if (textsPromiseRef.current) return textsPromiseRef.current;
 
     textsPromiseRef.current = (async () => {
-      console.log('[WorkProvider] Loading texts...');
       setIsTextsLoading(true);
       setError(null);
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
 import { MainIndexSlide } from '@/data/works';
+import { toCdnUrl } from '@/utils/toCdnUrl';
 
 interface IndexSlideshowProps {
   slides: MainIndexSlide[];
@@ -32,7 +33,7 @@ export const IndexSlideshow = ({ slides }: IndexSlideshowProps) => {
     }
   };
 
-  const goToSlide = useCallback(
+    const goToSlide = useCallback(
     (nextIndex: number) => {
       if (!slides.length) return;
       if (nextIndex === displayIndex) return;
@@ -42,15 +43,17 @@ export const IndexSlideshow = ({ slides }: IndexSlideshowProps) => {
       const nextSlide = slides[nextIndex];
       if (!layer || !nextSlide) return;
 
+      const nextImageSrc = toCdnUrl(nextSlide.image || '');
+
       clearTransitionTimeout();
       setIsTransitioning(true);
       setActiveIndex(nextIndex);
 
       const nextImage = new window.Image();
-      nextImage.src = nextSlide.image || '';
+      nextImage.src = nextImageSrc;
 
       const runTransition = () => {
-        layer.style.backgroundImage = `url("${nextSlide.image || ''}")`;
+        layer.style.backgroundImage = `url("${nextImageSrc}")`;
         layer.style.opacity = '0';
 
         requestAnimationFrame(() => {
@@ -115,13 +118,15 @@ export const IndexSlideshow = ({ slides }: IndexSlideshowProps) => {
     }
   }, [slides.length, displayIndex]);
 
-  useEffect(() => {
+    useEffect(() => {
     if (!slides.length) return;
 
     const current = slides[displayIndex];
+    const currentImageSrc = toCdnUrl(current?.image || '');
+
     const preloadTargets = [
-      slides[(displayIndex + 1) % slides.length]?.image,
-      slides[(displayIndex - 1 + slides.length) % slides.length]?.image,
+      toCdnUrl(slides[(displayIndex + 1) % slides.length]?.image || ''),
+      toCdnUrl(slides[(displayIndex - 1 + slides.length) % slides.length]?.image || ''),
     ].filter(Boolean) as string[];
 
     preloadTargets.forEach((src) => {
@@ -129,8 +134,8 @@ export const IndexSlideshow = ({ slides }: IndexSlideshowProps) => {
       img.src = src;
     });
 
-    if (displayImageRef.current && current?.image) {
-      displayImageRef.current.style.backgroundImage = `url("${current.image}")`;
+    if (displayImageRef.current && currentImageSrc) {
+      displayImageRef.current.style.backgroundImage = `url("${currentImageSrc}")`;
       displayImageRef.current.style.opacity = '1';
     }
   }, [slides, displayIndex]);
@@ -189,9 +194,9 @@ export const IndexSlideshow = ({ slides }: IndexSlideshowProps) => {
       onWheel={handleWheel}
     >
       {/* Base image */}
-      <div className="absolute inset-0">
+            <div className="absolute inset-0">
         <ImageWithFallback
-          src={slides[displayIndex]?.image || ''}
+          src={toCdnUrl(slides[displayIndex]?.image || '')}
           alt={currentTitle}
           className="w-full h-full object-cover"
         />
