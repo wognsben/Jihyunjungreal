@@ -15,32 +15,18 @@ export const toCdnUrl = (url?: string | null): string => {
     return trimmed;
   }
 
-  // 이미 Bunny CDN이면 그대로
-  if (trimmed.includes('.b-cdn.net')) {
-    return trimmed;
-  }
-
   // protocol-relative → https
   if (trimmed.startsWith('//')) {
     return `https:${trimmed}`;
   }
 
-  // URL 객체로 안전하게 파싱
-  try {
-    const parsed = new URL(trimmed, 'https://jihyunjung.com');
-
-    // 다른 도메인이면 건드리지 않음 (중요)
-    if (!parsed.hostname.includes(ORIGIN_HOST)) {
-      return trimmed;
-    }
-
-    // wp uploads만 CDN으로 변경
-    if (parsed.pathname.startsWith('/wp-content/uploads/')) {
-      return `${CDN_HOST}${parsed.pathname}`;
-    }
-
-    return trimmed;
-  } catch {
-    return trimmed;
-  }
+  // ------------------------------------------------------------
+  // 임시 조치:
+  // Bunny CDN이 현재 403을 반환하므로
+  // 구조는 유지하고, 실제 변환만 비활성화해서
+  // 원본 URL을 그대로 사용한다.
+  // 나중에 Bunny가 정상화되면
+  // 아래 return trimmed; 부분을 기존 CDN 변환 로직으로 되돌리면 된다.
+  // ------------------------------------------------------------
+  return trimmed;
 };
