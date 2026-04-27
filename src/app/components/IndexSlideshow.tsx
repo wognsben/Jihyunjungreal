@@ -227,33 +227,66 @@ export const IndexSlideshow = ({ slides }: IndexSlideshowProps) => {
       {/* Bottom-left number navigation */}
       <nav className="fixed left-4 md:left-8 bottom-8 z-30">
         <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap gap-x-3 gap-y-2 max-w-[200px]">
-            {slides.map((_, index) => {
-              const isActive = index === activeIndex;
+          <div className="flex flex-col gap-y-2">
+  {/* 첫 줄 (1~7) */}
+  <div className="flex gap-x-3">
+    {slides.slice(0, 7).map((_, index) => {
+      const isActive = index === activeIndex;
 
-              return (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (isTransitioning || isActive) return;
-                    goToSlide(index);
-                  }}
-                  className={`cursor-pointer font-mono text-xs transition-all duration-300 ${
-                    isActive
-                      ? 'text-white font-bold'
-                      : 'text-white/30 hover:text-white/60'
-                  }`}
-                  style={{ letterSpacing: '0.05em' }}
-                  aria-label={`Go to slide ${index + 1}`}
-                >
-                  {String(index + 1).padStart(2, '0')}
-                </button>
-              );
-            })}
-          </div>
+      return (
+        <button
+          key={index}
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (isTransitioning || isActive) return;
+            goToSlide(index);
+          }}
+          className={`cursor-pointer font-mono text-xs transition-all duration-300 ${
+            isActive
+              ? 'text-white font-bold'
+              : 'text-white/30 hover:text-white/60'
+          }`}
+          style={{ letterSpacing: '0.05em' }}
+          aria-label={`Go to slide ${index + 1}`}
+        >
+          {String(index + 1).padStart(2, '0')}
+        </button>
+      );
+    })}
+  </div>
+
+  {/* 두 번째 줄 (8~15) + indent */}
+  <div className="flex gap-x-3 ml-3">
+    {slides.slice(7).map((_, index) => {
+      const realIndex = index + 7;
+      const isActive = realIndex === activeIndex;
+
+      return (
+        <button
+          key={realIndex}
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (isTransitioning || isActive) return;
+            goToSlide(realIndex);
+          }}
+          className={`cursor-pointer font-mono text-xs transition-all duration-300 ${
+            isActive
+              ? 'text-white font-bold'
+              : 'text-white/30 hover:text-white/60'
+          }`}
+          style={{ letterSpacing: '0.05em' }}
+          aria-label={`Go to slide ${realIndex + 1}`}
+        >
+          {String(realIndex + 1).padStart(2, '0')}
+        </button>
+      );
+    })}
+  </div>
+</div>
         </div>
       </nav>
 
