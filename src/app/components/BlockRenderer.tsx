@@ -299,6 +299,31 @@ const captionText = safeCaptionText;
     return `<figure class="wp-block-embed"><div class="wp-block-embed__wrapper"><iframe src="${trimmedUrl}" frameborder="0" allowfullscreen></iframe></div></figure>`;
   });
 
+  cleaned = cleaned.replace(
+  /<p[^>]*>\s*(?:<a[^>]+href=["']([^"']+)["'][^>]*>)?(https?:\/\/(?:www\.)?(?:vimeo\.com\/\d+(?:[^\s<"]*)?|youtube\.com\/watch\?v=[\w-]+(?:[^\s<"]*)?|youtube\.com\/embed\/[\w-]+(?:[^\s<"]*)?|youtu\.be\/[\w-]+(?:[^\s<"]*)?))(?:<\/a>)?\s*<\/p>/gi,
+  (_match, hrefUrl, textUrl) => {
+    const rawUrl = (hrefUrl || textUrl || '').trim().replace(/&amp;/g, '&');
+
+    const vimeoMatch = rawUrl.match(
+      /(?:player\.)?vimeo\.com\/(?:video\/)?(\d+)/
+    );
+
+    if (vimeoMatch) {
+      return `<figure class="wp-block-embed"><div class="wp-block-embed__wrapper"><iframe src="https://player.vimeo.com/video/${vimeoMatch[1]}?dnt=1" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div></figure>`;
+    }
+
+    const ytMatch = rawUrl.match(
+      /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]+)/
+    );
+
+    if (ytMatch) {
+      return `<figure class="wp-block-embed"><div class="wp-block-embed__wrapper"><iframe src="https://www.youtube.com/embed/${ytMatch[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></figure>`;
+    }
+
+    return _match;
+  }
+);
+
     cleaned = cleaned.replace(
     /<p([^>]*)>(?:[ \t\r\n]|<br\s*\/?>)*<\/p>/gi,
     '<p$1><br></p>'
@@ -532,6 +557,36 @@ const normalizeRenderableHtml = (input: string): string => {
 
 const getRenderableHtml = (input: string): string => {
   return withExternalLinkTarget(normalizeRenderableHtml(input));
+};
+
+const getVideoEmbedUrlFromText = (text: string): string | null => {
+  if (!text) return null;
+
+  const normalized = decodeHtmlEntities(text)
+    .replace(/&amp;/g, '&')
+    .trim();
+
+  const cleanText = normalized
+    .replace(/<[^>]+>/g, '')
+    .trim();
+
+  const vimeoMatch = cleanText.match(
+  /^https?:\/\/(?:www\.)?vimeo\.com\/(\d+)(?:[?#][^\s<]*)?$/i
+);
+
+  if (vimeoMatch) {
+    return `https://player.vimeo.com/video/${vimeoMatch[1]}?dnt=1`;
+  }
+
+  const youtubeMatch = cleanText.match(
+    /^https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtube\.com\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[&#?][^\s<]*)?$/i
+  );
+
+  if (youtubeMatch) {
+    return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+  }
+
+  return null;
 };
 
 // ============================================================
@@ -854,30 +909,38 @@ const parseOrphanHtml = (html: string): ParsedBlock[] => {
 
     // 8. Paragraph
     if (el.tagName === 'P') {
-      if (/<iframe/i.test(outer)) {
-        blocks.push({ type: 'embed', html: outer, align });
-      } else if (/<img/i.test(outer)) {
-        blocks.push({ type: 'image', html: outer, align });
-      } else {
-        const normalizedParagraphHtml = outer.replace(
-          /(<p[^>]*>)([\s\S]*?)(<\/p>)/i,
-          (_match, openTag, innerContent, closeTag) => {
-            const normalizedInner = innerContent
-              .replace(/\r\n/g, '\n')
-              .replace(/\n/g, '<br>');
+  const videoEmbedUrl = getVideoEmbedUrlFromText(outer);
 
-            return `${openTag}${normalizedInner}${closeTag}`;
-          }
-        );
+  if (videoEmbedUrl) {
+    blocks.push({
+      type: 'embed',
+      html: `<figure class="wp-block-embed"><div class="wp-block-embed__wrapper"><iframe src="${videoEmbedUrl}" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div></figure>`,
+      align,
+    });
+  } else if (/<iframe/i.test(outer)) {
+    blocks.push({ type: 'embed', html: outer, align });
+  } else if (/<img/i.test(outer)) {
+    blocks.push({ type: 'image', html: outer, align });
+  } else {
+    const normalizedParagraphHtml = outer.replace(
+      /(<p[^>]*>)([\s\S]*?)(<\/p>)/i,
+      (_match, openTag, innerContent, closeTag) => {
+        const normalizedInner = innerContent
+          .replace(/\r\n/g, '\n')
+          .replace(/\n/g, '<br>');
 
-        blocks.push({
-          type: 'paragraph',
-          html: normalizedParagraphHtml,
-          align,
-        });
+        return `${openTag}${normalizedInner}${closeTag}`;
       }
-      continue;
-    }
+    );
+
+    blocks.push({
+      type: 'paragraph',
+      html: normalizedParagraphHtml,
+      align,
+    });
+  }
+  continue;
+}
 
     // 9. List
     if (el.tagName === 'UL' || el.tagName === 'OL') {
@@ -1100,6 +1163,7 @@ const getImageMetaFromHtml = (
   html: string,
   fallbackAlign?: ParsedBlock['align']
 ): ExtractedImage | null => {
+
   const src = getBestImageUrl(html);
   if (!src) return null;
 
@@ -1729,8 +1793,8 @@ const VideoEmbedRenderer = ({
   };
 
   const outerClassName = hasCustomSize
-    ? 'mb-12 md:mb-20 w-full'
-    : 'mb-12 md:mb-20 w-full';
+  ? 'my-0 w-full'
+  : 'my-0 w-full';
 
   const wrapperStyle: React.CSSProperties = hasCustomSize
     ? {
@@ -1743,15 +1807,15 @@ const VideoEmbedRenderer = ({
       };
 
   const frameStyle: React.CSSProperties = hasCustomSize
-    ? {
-        width: '100%',
-        height: height ? normalizeCssSize(height) : undefined,
-        aspectRatio: !height ? '16 / 9' : undefined,
-      }
-    : {
-        width: '100%',
-        height: '813px',
-      };
+  ? {
+      width: '100%',
+      height: height ? normalizeCssSize(height) : undefined,
+      aspectRatio: !height ? '16 / 9' : undefined,
+    }
+  : {
+      width: '100%',
+      aspectRatio: '16 / 9',
+    };
 
   return (
     <div className={outerClassName}>
@@ -1995,7 +2059,7 @@ export const BlockRenderer = ({
 
     return (
     <div
-      className="space-y-2 md:space-y-4 min-[1025px]:space-y-5"
+      className="space-y-2 md:space-y-4 min-[1025px]:space-y-4"
       onClickCapture={handleLinkClick}
     >
       {groups.map((group, index) => {
