@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -138,12 +139,49 @@ export const InfiniteWorkGrid = ({
   const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
   const getLocalizedTitle = useCallback(
-    (work: Work) => {
-      return lang === 'ko' ? work.title_ko : lang === 'jp' ? work.title_jp : work.title_en;
-    },
-    [lang]
-  );
+  (work: Work) => {
+    return lang === 'ko' ? work.title_ko : lang === 'jp' ? work.title_jp : work.title_en;
+  },
+  [lang]
+);
 
+const sortedWorks = useMemo(() => {
+  if (!works || works.length === 0) return [];
+
+  const getWorkDateTime = (work: any) => {
+    const rawDate = work.postDate || work.postDateGmt || '';
+
+    if (!rawDate) {
+      return 0;
+    }
+
+    const time = new Date(rawDate).getTime();
+
+    if (Number.isNaN(time)) {
+      return 0;
+    }
+
+    return time;
+  };
+
+  return [...works].sort((a: any, b: any) => {
+    const yearDiff = (b.year || 0) - (a.year || 0);
+
+    if (yearDiff !== 0) {
+      return yearDiff;
+    }
+
+    const dateDiff = getWorkDateTime(b) - getWorkDateTime(a);
+
+    if (dateDiff !== 0) {
+      return dateDiff;
+    }
+
+    return Number(b.id) - Number(a.id);
+  });
+}, [works]);
+
+  
   const saveGridPosition = useCallback(() => {
     if (!storageKey || !mode) return;
 
@@ -185,12 +223,12 @@ export const InfiniteWorkGrid = ({
   }, []);
 
   const goToNextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % works.length);
-  };
+  setCurrentSlide((prev) => (prev + 1) % sortedWorks.length);
+};
 
-  const goToPrevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + works.length) % works.length);
-  };
+const goToPrevSlide = () => {
+  setCurrentSlide((prev) => (prev - 1 + sortedWorks.length) % sortedWorks.length);
+};
 
   const handleDesktopTrackEnter = () => {
     if (hoverLeaveTimeoutRef.current) {
@@ -265,7 +303,7 @@ export const InfiniteWorkGrid = ({
       if (step <= 0) return;
 
       const index = Math.round(viewport.scrollLeft / step);
-      setCurrentSlide(clamp(index, 0, Math.max(works.length - 1, 0)));
+setCurrentSlide(clamp(index, 0, Math.max(sortedWorks.length - 1, 0)));
     };
 
     updateCurrentSlideFromScroll();
@@ -276,7 +314,7 @@ export const InfiniteWorkGrid = ({
       viewport.removeEventListener('scroll', updateCurrentSlideFromScroll);
       window.removeEventListener('resize', updateCurrentSlideFromScroll);
     };
-  }, [isReady, isMobile, works.length]);
+  }, [isReady, isMobile, sortedWorks.length]);
 
   // Tablet bounds
   useLayoutEffect(() => {
@@ -544,7 +582,7 @@ export const InfiniteWorkGrid = ({
     };
   }, []);
 
-  if (!isReady || works.length === 0) return null;
+  if (!isReady || sortedWorks.length === 0) return null;
 
   // Mobile
   if (isMobile) {
@@ -556,7 +594,7 @@ export const InfiniteWorkGrid = ({
   other works
 </h2>
             <span className="text-[10px] font-[var(--font-ui)] text-muted-foreground/70">
-  {works.length} {works.length === 1 ? 'work' : 'works'}
+  {sortedWorks.length} {sortedWorks.length === 1 ? 'work' : 'works'}
 </span>
           </div>
         </div>
@@ -568,7 +606,7 @@ export const InfiniteWorkGrid = ({
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
             <div className="flex gap-3 pr-6">
-              {works.map((work, index) => (
+              {sortedWorks.map((work, index) => (
                 <div
                   key={work.id}
                   data-mobile-card
@@ -607,7 +645,7 @@ export const InfiniteWorkGrid = ({
 
           <div className="mt-6 pr-6 flex justify-center">
             <span className="text-[12px] font-[var(--font-ui)] text-muted-foreground/60 tracking-wider tabular-nums">
-              {String(currentSlide + 1).padStart(2, '0')} / {String(works.length).padStart(2, '0')}
+              {String(currentSlide + 1).padStart(2, '0')} / {String(sortedWorks.length).padStart(2, '0')}
             </span>
           </div>
         </div>
@@ -627,7 +665,7 @@ export const InfiniteWorkGrid = ({
               other works
             </h2>
             <span className="text-muted-foreground/80 text-[10px] font-[var(--font-ui)]">
-              {works.length} {works.length === 1 ? 'work' : 'works'}
+              {sortedWorks.length} {sortedWorks.length === 1 ? 'work' : 'works'}
             </span>
           </div>
 
@@ -674,17 +712,17 @@ export const InfiniteWorkGrid = ({
               });
             }}
           >
-            {works.map((work, index) => (
-              <WorkCard
-                key={work.id}
-                work={work}
-                lang={lang}
-                title={getLocalizedTitle(work)}
-                widthClass="w-[calc((100vw-96px)/2)] lg:w-[calc((100vw-140px)/2.2)] min-w-[280px] max-w-[520px]"
-                onClick={handleGridWorkClick}
-                imagePriority={index < 2}
-              />
-            ))}
+            {sortedWorks.map((work, index) => (
+  <WorkCard
+    key={work.id}
+    work={work}
+    lang={lang}
+    title={getLocalizedTitle(work)}
+    widthClass="w-[calc((100vw-96px)/2)] lg:w-[calc((100vw-140px)/2.2)] min-w-[280px] max-w-[520px]"
+    onClick={handleGridWorkClick}
+    imagePriority={index < 2}
+  />
+))}
           </motion.div>
         </div>
 
@@ -704,14 +742,14 @@ export const InfiniteWorkGrid = ({
               className="relative w-full cursor-pointer"
               style={{ height: '48px' }}
               onMouseMove={(e) => {
-                if (!indicatorRef.current) return;
-                const rect = indicatorRef.current.getBoundingClientRect();
-                const x = (e.clientX - rect.left) / rect.width;
-                const clamped = Math.max(0, Math.min(1, x));
-                setHoverProgress(clamped);
-                const nearestIndex = Math.round(clamped * (works.length - 1));
-                setHoverIndex(nearestIndex);
-              }}
+  if (!indicatorRef.current) return;
+  const rect = indicatorRef.current.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width;
+  const clamped = Math.max(0, Math.min(1, x));
+  setHoverProgress(clamped);
+  const nearestIndex = Math.round(clamped * (sortedWorks.length - 1));
+  setHoverIndex(nearestIndex);
+}}
               onMouseLeave={() => {
                 setHoverIndex(null);
                 setHoverProgress(null);
@@ -736,15 +774,15 @@ export const InfiniteWorkGrid = ({
             >
               <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-px bg-foreground/[0.06]" />
 
-              {works.map((_, index) => {
-                const pos = works.length <= 1 ? 0 : (index / (works.length - 1)) * 100;
-                const isHovered = index === hoverIndex;
-                const hoverDist =
-                  hoverProgress !== null
-                    ? Math.abs(
-                        hoverProgress - (works.length <= 1 ? 0 : index / (works.length - 1))
-                      )
-                    : 1;
+              {sortedWorks.map((_, index) => {
+  const pos = sortedWorks.length <= 1 ? 0 : (index / (sortedWorks.length - 1)) * 100;
+  const isHovered = index === hoverIndex;
+  const hoverDist =
+    hoverProgress !== null
+      ? Math.abs(
+          hoverProgress - (sortedWorks.length <= 1 ? 0 : index / (sortedWorks.length - 1))
+        )
+      : 1;
                 const proximityOpacity =
                   hoverProgress !== null ? Math.max(0.06, 0.3 - hoverDist * 2) : 0.06;
 
@@ -831,11 +869,11 @@ export const InfiniteWorkGrid = ({
                       style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(12px)' }}
                     >
                       <p className="text-[8px] sans-serif text-white/85 whitespace-nowrap tracking-[0.08em] uppercase">
-                        {getLocalizedTitle(works[hoverIndex])}
-                      </p>
-                      <p className="text-[7px] sans-serif text-white/40 tracking-[0.12em] mt-0.5">
-                        {works[hoverIndex].year}
-                      </p>
+  {getLocalizedTitle(sortedWorks[hoverIndex])}
+</p>
+<p className="text-[7px] sans-serif text-white/40 tracking-[0.12em] mt-0.5">
+  {sortedWorks[hoverIndex].year}
+</p>
                     </div>
                   </motion.div>
                 )}
@@ -858,7 +896,7 @@ export const InfiniteWorkGrid = ({
             other works
           </h2>
           <span className="text-muted-foreground/80 font-[var(--font-ui)] text-[10px]">
-            {works.length} {works.length === 1 ? 'work' : 'works'}
+            {sortedWorks.length} {sortedWorks.length === 1 ? 'work' : 'works'}
           </span>
         </div>
 
@@ -885,17 +923,17 @@ export const InfiniteWorkGrid = ({
               WebkitOverflowScrolling: 'touch',
             }}
           >
-            {works.map((work, index) => (
-              <WorkCard
-                key={work.id}
-                work={work}
-                lang={lang}
-                title={getLocalizedTitle(work)}
-                widthClass="w-[280px] md:w-[350px]"
-                onClick={handleGridWorkClick}
-                imagePriority={index < 2}
-              />
-            ))}
+            {sortedWorks.map((work, index) => (
+  <WorkCard
+    key={work.id}
+    work={work}
+    lang={lang}
+    title={getLocalizedTitle(work)}
+    widthClass="w-[280px] md:w-[350px]"
+    onClick={handleGridWorkClick}
+    imagePriority={index < 2}
+  />
+))}
           </div>
         </div>
       </div>
@@ -921,7 +959,7 @@ export const InfiniteWorkGrid = ({
               const x = (e.clientX - rect.left) / rect.width;
               const clamped = Math.max(0, Math.min(1, x));
               setHoverProgress(clamped);
-              const nearestIndex = Math.round(clamped * (works.length - 1));
+              const nearestIndex = Math.round(clamped * (sortedWorks.length - 1));
               setHoverIndex(nearestIndex);
             }}
             onMouseLeave={() => {
@@ -945,15 +983,15 @@ export const InfiniteWorkGrid = ({
           >
             <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-px bg-foreground/[0.06]" />
 
-            {works.map((_, index) => {
-              const pos = works.length <= 1 ? 0 : (index / (works.length - 1)) * 100;
-              const isHovered = index === hoverIndex;
-              const hoverDist =
-                hoverProgress !== null
-                  ? Math.abs(
-                      hoverProgress - (works.length <= 1 ? 0 : index / (works.length - 1))
-                    )
-                  : 1;
+            {sortedWorks.map((_, index) => {
+  const pos = sortedWorks.length <= 1 ? 0 : (index / (sortedWorks.length - 1)) * 100;
+  const isHovered = index === hoverIndex;
+  const hoverDist =
+    hoverProgress !== null
+      ? Math.abs(
+          hoverProgress - (sortedWorks.length <= 1 ? 0 : index / (sortedWorks.length - 1))
+        )
+      : 1;
               const proximityOpacity =
                 hoverProgress !== null ? Math.max(0.06, 0.3 - hoverDist * 2) : 0.06;
 
@@ -1048,10 +1086,10 @@ export const InfiniteWorkGrid = ({
       : 'font-[var(--font-body-ko)]'
   }`}
 >
-  {getLocalizedTitle(works[hoverIndex])}
+  {getLocalizedTitle(sortedWorks[hoverIndex])}
 </p>
 <p className="text-[7px] font-[var(--font-ui)] text-white/40 tracking-[0.12em] mt-0.5">
-  {works[hoverIndex].year}
+  {sortedWorks[hoverIndex].year}
 </p>
                   </div>
                 </motion.div>
