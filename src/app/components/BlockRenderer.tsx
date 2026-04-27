@@ -286,17 +286,17 @@ const captionText = safeCaptionText;
       /(?:player\.)?vimeo\.com\/(?:video\/)?(\d+)/
     );
     if (vimeoMatch) {
-      return `<figure class="wp-block-embed"><div class="wp-block-embed__wrapper"><iframe src="https://player.vimeo.com/video/${vimeoMatch[1]}?dnt=1" width="100%" height="100%" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div></figure>`;
+      return `<figure class="wp-block-embed"><div class="wp-block-embed__wrapper"><iframe src="https://player.vimeo.com/video/${vimeoMatch[1]}?dnt=1" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div></figure>`;
     }
 
     const ytMatch = trimmedUrl.match(
       /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]+)/
     );
     if (ytMatch) {
-      return `<figure class="wp-block-embed"><div class="wp-block-embed__wrapper"><iframe src="https://www.youtube.com/embed/${ytMatch[1]}" width="100%" height="100%" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></figure>`;
+      return `<figure class="wp-block-embed"><div class="wp-block-embed__wrapper"><iframe src="https://www.youtube.com/embed/${ytMatch[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></figure>`;
     }
 
-    return `<figure class="wp-block-embed"><div class="wp-block-embed__wrapper"><iframe src="${trimmedUrl}" width="100%" height="100%" frameborder="0" allowfullscreen></iframe></div></figure>`;
+    return `<figure class="wp-block-embed"><div class="wp-block-embed__wrapper"><iframe src="${trimmedUrl}" frameborder="0" allowfullscreen></iframe></div></figure>`;
   });
 
     cleaned = cleaned.replace(
@@ -1699,16 +1699,23 @@ const VideoEmbedRenderer = ({
   align?: ParsedBlock['align'];
   html: string;
 }) => {
-
   const getAttr = (attr: string) => {
-    const match = html.match(new RegExp(`${attr}=["']?([^"'\\s>]+)`));
+    const match = html.match(new RegExp(`${attr}=["']?([^"'\\s>]+)`, 'i'));
     return match ? match[1] : '';
   };
 
   const width = getAttr('width');
   const height = getAttr('height');
 
-  const hasCustomSize = width || height;
+  const widthNumber = width && /^\d+$/.test(width) ? Number(width) : null;
+  const heightNumber = height && /^\d+$/.test(height) ? Number(height) : null;
+
+  const isDefaultEmbedSize =
+    (widthNumber === 560 && heightNumber === 315) ||
+    (widthNumber === 640 && heightNumber === 360) ||
+    (widthNumber === 500 && heightNumber === 281);
+
+  const hasCustomSize = Boolean((width || height) && !isDefaultEmbedSize);
 
   const alignWrapper =
     align === 'left'
@@ -1717,31 +1724,37 @@ const VideoEmbedRenderer = ({
       ? 'ml-auto'
       : 'mx-auto';
 
+  const normalizeCssSize = (value: string) => {
+    return /^\d+$/.test(value) ? `${value}px` : value;
+  };
+
+  const outerClassName = hasCustomSize
+    ? 'mb-12 md:mb-20 w-full'
+    : 'mb-12 md:mb-20 w-full';
+
   const wrapperStyle: React.CSSProperties = hasCustomSize
     ? {
-        width: /^\d+$/.test(width) ? `${width}px` : width,
+        width: width ? normalizeCssSize(width) : '100%',
         maxWidth: '100%',
       }
     : {
         width: '100%',
+        maxWidth: '1220px',
       };
 
   const frameStyle: React.CSSProperties = hasCustomSize
     ? {
         width: '100%',
-        height: height
-          ? /^\d+$/.test(height)
-            ? `${height}px`
-            : height
-          : undefined,
+        height: height ? normalizeCssSize(height) : undefined,
+        aspectRatio: !height ? '16 / 9' : undefined,
       }
     : {
         width: '100%',
-        aspectRatio: '16 / 9',
+        height: '813px',
       };
 
   return (
-    <div className="mb-12 md:mb-20 w-full">
+    <div className={outerClassName}>
       <div className={alignWrapper} style={wrapperStyle}>
         <div
           className="relative bg-black/5 overflow-hidden"
@@ -1752,13 +1765,13 @@ const VideoEmbedRenderer = ({
               src={src}
               title="Video"
               allowFullScreen
-              className="w-full h-full"
+              className="absolute inset-0 w-full h-full"
             />
           ) : (
             <video
               src={src}
               controls
-              className="w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-cover"
             />
           )}
         </div>
@@ -1847,7 +1860,13 @@ const EmbedBlock = ({
       if (videoId) embedUrl = `https://player.vimeo.com/video/${videoId}`;
     }
 
-    return <VideoEmbedRenderer src={embedUrl} align={align} />;
+    return (
+  <VideoEmbedRenderer
+    src={embedUrl}
+    align={align}
+    html={html}
+  />
+);
   }
 
   return (
