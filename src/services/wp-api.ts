@@ -1602,6 +1602,8 @@ let featuredImage = getFullSizeUrl(rawFeaturedImage);
     title_jp,
 
     year: yearFromCategory || new Date(post.date).getFullYear(),
+    postDate: post.date || '',
+    postDateGmt: (post as any).date_gmt || '',
 
     yearCaption_ko: yearCaption_ko || undefined,
     yearCaption_en: yearCaption_en || undefined,

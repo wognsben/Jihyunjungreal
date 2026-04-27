@@ -100,9 +100,14 @@ const extractWorkMeta = (text: string) => {
   return match ? match[1].trim() : null;
 };
 
+const hasTooltipOffMeta = (text: string) => {
+  return /\[tooltip:off\]/i.test(text);
+};
+
 const removeWorkMeta = (html: string) => {
   return html
     .replace(/\s*\[work:.*?\]\s*/gi, ' ')
+    .replace(/\s*\[tooltip:off\]\s*/gi, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim();
 };
@@ -176,17 +181,21 @@ const transformBioContent = (html: string | undefined, works: Work[], lang: stri
     };
 
     const findWorkByMetaOrText = (text: string) => {
-      const metaTitle = extractWorkMeta(text);
+  if (hasTooltipOffMeta(text)) {
+    return null;
+  }
 
-      if (metaTitle) {
-        const foundByMeta = findWorkByMeta(metaTitle, works, lang);
-        if (foundByMeta) {
-          return foundByMeta.id;
-        }
-      }
+  const metaTitle = extractWorkMeta(text);
 
-      return findWorkIdInText(text);
-    };
+  if (metaTitle) {
+    const foundByMeta = findWorkByMeta(metaTitle, works, lang);
+    if (foundByMeta) {
+      return foundByMeta.id;
+    }
+  }
+
+  return findWorkIdInText(text);
+};
 
     elements.forEach(el => {
       const rawHtml = el.innerHTML;

@@ -1692,41 +1692,76 @@ const VideoEmbedRenderer = ({
   src,
   isIframe = true,
   align,
+  html,
 }: {
   src: string;
   isIframe?: boolean;
   align?: ParsedBlock['align'];
+  html: string;
 }) => {
+
+  const getAttr = (attr: string) => {
+    const match = html.match(new RegExp(`${attr}=["']?([^"'\\s>]+)`));
+    return match ? match[1] : '';
+  };
+
+  const width = getAttr('width');
+  const height = getAttr('height');
+
+  const hasCustomSize = width || height;
+
   const alignWrapper =
-  align === 'left'
-    ? 'max-w-5xl mr-auto'
-    : align === 'right'
-    ? 'max-w-5xl ml-auto'
-    : align === 'full'
-    ? 'w-full'
-    : 'max-w-5xl mx-auto';
+    align === 'left'
+      ? 'mr-auto'
+      : align === 'right'
+      ? 'ml-auto'
+      : 'mx-auto';
+
+  const wrapperStyle: React.CSSProperties = hasCustomSize
+    ? {
+        width: /^\d+$/.test(width) ? `${width}px` : width,
+        maxWidth: '100%',
+      }
+    : {
+        width: '100%',
+      };
+
+  const frameStyle: React.CSSProperties = hasCustomSize
+    ? {
+        width: '100%',
+        height: height
+          ? /^\d+$/.test(height)
+            ? `${height}px`
+            : height
+          : undefined,
+      }
+    : {
+        width: '100%',
+        aspectRatio: '16 / 9',
+      };
 
   return (
-  <div className="mb-12 md:mb-20 -mx-6 md:-mx-12">
-    <div className={alignWrapper}>
-      <div className="relative w-full aspect-video bg-black/5 overflow-hidden">
+    <div className="mb-12 md:mb-20 w-full">
+      <div className={alignWrapper} style={wrapperStyle}>
+        <div
+          className="relative bg-black/5 overflow-hidden"
+          style={frameStyle}
+        >
           {isIframe ? (
             <iframe
               src={src}
               title="Video"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
               allowFullScreen
-              className="absolute inset-0 w-full h-full"
+              className="w-full h-full"
             />
           ) : (
             <video
               src={src}
               controls
-              className="absolute inset-0 w-full h-full object-cover"
+              className="w-full h-full object-cover"
             />
           )}
         </div>
-        <FeaturedFilmLabel />
       </div>
     </div>
   );
@@ -1750,12 +1785,13 @@ const VideoBlock = ({
 
   if (src) {
     return (
-      <VideoEmbedRenderer
-        src={src}
-        isIframe={!!iframeSrcMatch}
-        align={align}
-      />
-    );
+  <VideoEmbedRenderer
+    src={src}
+    isIframe={!!iframeSrcMatch}
+    align={align}
+    html={html}
+  />
+);
   }
 
   return (
@@ -1790,8 +1826,14 @@ const EmbedBlock = ({
   );
 
   if (iframeSrcMatch) {
-    return <VideoEmbedRenderer src={iframeSrcMatch[1]} align={align} />;
-  }
+  return (
+    <VideoEmbedRenderer
+      src={iframeSrcMatch[1]}
+      align={align}
+      html={html}
+    />
+  );
+}
 
   if (urlMatch) {
     const url = urlMatch[0];

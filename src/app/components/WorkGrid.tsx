@@ -133,13 +133,39 @@ useEffect(() => {
     return getLocalizedThumbnail(work, lang) || '';
   };
 
-  const sortedWorks = useMemo(() => {
+ const sortedWorks = useMemo(() => {
     if (!works || works.length === 0) return [];
+
+    const getWorkDateTime = (work: any) => {
+      const rawDate = work.postDate || work.postDateGmt || '';
+
+      if (!rawDate) {
+        return 0;
+      }
+
+      const time = new Date(rawDate).getTime();
+
+      if (Number.isNaN(time)) {
+        return 0;
+      }
+
+      return time;
+    };
 
     const baseSorted = [...works].sort((a: any, b: any) => {
       const yearDiff = (b.year || 0) - (a.year || 0);
-      if (yearDiff !== 0) return yearDiff;
-      return String(b.id).localeCompare(String(a.id));
+
+      if (yearDiff !== 0) {
+        return yearDiff;
+      }
+
+      const dateDiff = getWorkDateTime(b) - getWorkDateTime(a);
+
+      if (dateDiff !== 0) {
+        return dateDiff;
+      }
+
+      return Number(b.id) - Number(a.id);
     });
 
     const seenImages = new Set<string>();
