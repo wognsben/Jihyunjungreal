@@ -747,42 +747,35 @@ const parseOrphanHtml = (html: string): ParsedBlock[] => {
   const normalized = rawHtml
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
-    .replace(/(?:\n\s*){2,}/g, '<br><br>');
+    .replace(/\n/g, '<br>');
 
-  const parts = normalized
-    .split(/(?:<br\s*\/?>\s*){2,}/gi)
-    .map((part) => {
-      const withoutLeadingTrailingRegularWhitespace = part
-        .replace(/^[ \t\r\n]*(?:<br\s*\/?>[ \t\r\n]*)*/gi, '')
-        .replace(/(?:[ \t\r\n]*<br\s*\/?>)*[ \t\r\n]*$/gi, '');
+  const withoutLeadingTrailingRegularWhitespace = normalized
+    .replace(/^[ \t\r\n]*(?:<br\s*\/?>[ \t\r\n]*)*/gi, '')
+    .replace(/(?:[ \t\r\n]*<br\s*\/?>)*[ \t\r\n]*$/gi, '');
 
-      const withoutHtmlTags = withoutLeadingTrailingRegularWhitespace.replace(/<[^>]+>/g, '');
-      const withoutRegularWhitespace = withoutHtmlTags.replace(/[ \t\r\n]/g, '');
-      const hasNbsp = withoutHtmlTags.includes('\u00a0') || withoutHtmlTags.includes('&nbsp;');
+  const withoutHtmlTags = withoutLeadingTrailingRegularWhitespace.replace(/<[^>]+>/g, '');
+  const withoutRegularWhitespace = withoutHtmlTags.replace(/[ \t\r\n]/g, '');
+  const hasNbsp = withoutHtmlTags.includes('\u00a0') || withoutHtmlTags.includes('&nbsp;');
 
-      if (!withoutRegularWhitespace && !hasNbsp) {
-        return '';
-      }
+  if (!withoutRegularWhitespace && !hasNbsp) {
+    return [];
+  }
 
-      return withoutLeadingTrailingRegularWhitespace;
-    })
-    .filter((part) => part !== '');
+  const onlyNbspAfterTagStrip =
+    withoutLeadingTrailingRegularWhitespace
+      .replace(/<[^>]+>/g, '')
+      .replace(/[ \t\r\n]/g, '')
+      .replace(/\u00a0/g, '') === '';
 
-  if (parts.length === 0) return [];
-
-  return parts.map((part) => {
-    const onlyNbspAfterTagStrip =
-      part
-        .replace(/<[^>]+>/g, '')
-        .replace(/[ \t\r\n]/g, '')
-        .replace(/\u00a0/g, '') === '';
-
-    return {
+  return [
+    {
       type: 'paragraph' as const,
-      html: onlyNbspAfterTagStrip ? `<p><br></p>` : `<p>${part}</p>`,
-      align: detectAlign(part) || fallbackAlign,
-    };
-  });
+      html: onlyNbspAfterTagStrip
+        ? `<p><br></p>`
+        : `<p>${withoutLeadingTrailingRegularWhitespace}</p>`,
+      align: detectAlign(withoutLeadingTrailingRegularWhitespace) || fallbackAlign,
+    },
+  ];
 };
 
   const flushInlineBuffer = (buffer: string[]) => {
@@ -923,15 +916,17 @@ const parseOrphanHtml = (html: string): ParsedBlock[] => {
     blocks.push({ type: 'image', html: outer, align });
   } else {
     const normalizedParagraphHtml = outer.replace(
-      /(<p[^>]*>)([\s\S]*?)(<\/p>)/i,
-      (_match, openTag, innerContent, closeTag) => {
-        const normalizedInner = innerContent
-          .replace(/\r\n/g, '\n')
-          .replace(/\n/g, '<br>');
+  /(<p[^>]*>)([\s\S]*?)(<\/p>)/i,
+  (_match, openTag, innerContent, closeTag) => {
+    const normalizedInner = innerContent
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/(<br\s*\/?>)[ \t]*\n[ \t]*/gi, '$1')
+      .replace(/\n/g, '<br>');
 
-        return `${openTag}${normalizedInner}${closeTag}`;
-      }
-    );
+    return `${openTag}${normalizedInner}${closeTag}`;
+  }
+);
 
     blocks.push({
       type: 'paragraph',

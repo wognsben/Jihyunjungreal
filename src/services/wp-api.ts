@@ -1070,7 +1070,13 @@ const transformText = async (post: WPPost): Promise<TextItem> => {
 
   // Resolve [gallery] shortcodes in all content HTML fields
   const contentHtml = await resolveGalleryShortcodes(safeContentRendered || '');
-  const content_ko = decode(stripHtmlToText(contentHtml));
+  const content_ko_raw = normalizeAcfTextHtml(
+  escapeNonHtmlAngleBrackets(contentHtml)
+);
+
+const content_ko = content_ko_raw
+  ? decode(stripHtmlToText(content_ko_raw))
+  : '';
 
   // ACF multilingual fields
   const acf = post.acf || {};
