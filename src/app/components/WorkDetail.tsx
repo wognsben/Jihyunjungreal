@@ -14,6 +14,12 @@ import { TextDetail } from '@/app/components/TextDetail';
 import { BlockRenderer } from '@/app/components/BlockRenderer';
 import { toCdnUrl } from '@/utils/toCdnUrl';
 
+declare global {
+  interface Window {
+    gtag?: (...args: any[]) => void;
+  }
+}
+
 interface WorkDetailProps {
   workId: string | null;
   shouldRestoreGrid: boolean;
@@ -275,6 +281,20 @@ export const WorkDetail = ({
   };
 
   const localizedContent = getLocalizedContent();
+
+  useEffect(() => {
+  if (!window.gtag || !work) {
+    return;
+  }
+
+  window.gtag('event', 'view_work', {
+    work_id: String(work.id),
+    work_slug: work.slug || '',
+    work_title: cleanTitleText(title),
+    work_language: lang,
+    work_year: work.year || '',
+  });
+}, [work?.id, lang]);
 
   // Filter out current work from "Other Works"
   const otherWorks = works.filter((w) => w.id !== workId);

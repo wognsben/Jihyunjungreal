@@ -1674,7 +1674,7 @@ const ImageSliderBlock = ({
         }`}
       >
         {lines.map((line, idx) => (
-          <p key={idx}>{line}</p>
+          <p className="text-[12px] text-[13px] text-[14px] text-[13px] text-[12px] text-[13px] text-[14px]" key={idx}>{line}</p>
         ))}
       </div>
     );
