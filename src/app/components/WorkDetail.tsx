@@ -255,8 +255,28 @@ export const WorkDetail = ({
   };
 
   const handleWorkClick = (clickedWorkId: number) => {
-    window.location.hash = `#/work/${clickedWorkId}`;
-  };
+  const clickedWork = works.find((w) => String(w.id) === String(clickedWorkId));
+
+  const clickedWorkTitle = clickedWork
+    ? lang === 'ko'
+      ? clickedWork.title_ko
+      : lang === 'jp'
+      ? clickedWork.title_jp
+      : clickedWork.title_en
+    : '';
+
+  if (window.gtag) {
+    window.gtag('event', 'click_work', {
+      from_work_id: workId || '',
+      from_work_title: cleanTitleText(title),
+      to_work_id: String(clickedWorkId),
+      to_work_title: cleanTitleText(clickedWorkTitle),
+      work_language: lang,
+    });
+  }
+
+  window.location.hash = `#/work/${clickedWorkId}`;
+};
 
   const title =
     lang === 'ko' ? work.title_ko : lang === 'jp' ? work.title_jp : work.title_en;
@@ -605,7 +625,19 @@ export const WorkDetail = ({
                         return (
                           <div
                             key={article.id}
-                            onClick={() => setSelectedArticleId(article.id)}
+                           onClick={() => {
+  if (window.gtag) {
+    window.gtag('event', 'click_related_text', {
+      from_work_id: workId || '',
+      from_work_title: cleanTitleText(title),
+      text_id: article.id,
+      text_title: cleanTitleText(displayTitle),
+      work_language: lang,
+    });
+  }
+
+  setSelectedArticleId(article.id);
+}}
                             className="group block relative cursor-pointer"
                             onMouseEnter={() => {
                               setHoveredArticleId(article.id);
