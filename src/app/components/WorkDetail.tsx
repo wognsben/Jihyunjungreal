@@ -303,18 +303,24 @@ export const WorkDetail = ({
   const localizedContent = getLocalizedContent();
 
   useEffect(() => {
-  if (!window.gtag || !work) {
+  if (!window.gtag || !work || !title) {
+    return;
+  }
+
+  const cleanedTitle = cleanTitleText(title);
+
+  if (!cleanedTitle) {
     return;
   }
 
   window.gtag('event', 'view_work', {
     work_id: String(work.id),
     work_slug: work.slug || '',
-    work_title: cleanTitleText(title),
+    work_title: cleanedTitle,
     work_language: lang,
     work_year: work.year || '',
   });
-}, [work?.id, lang]);
+}, [work?.id, title, lang]);
 
   // Filter out current work from "Other Works"
   const otherWorks = works.filter((w) => w.id !== workId);
