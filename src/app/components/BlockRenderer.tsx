@@ -38,6 +38,7 @@ interface RenderGroup {
 interface ExtractedImage {
   src: string;
   caption: string;
+  captionHtml?: string;
   width?: number;
   height?: number;
   styleWidth?: string;
@@ -217,9 +218,195 @@ const escapeNonHtmlAngleBrackets = (html: string): string => {
   });
 };
 
+const sanitizeCaptionHtml = (html: string): string => {
+  return html
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/on\w+="[^"]*"/gi, '');
+};
+
+const linkifyPlainTextUrls = (html: string): string => {
+  if (!html || !/https?:\/\//i.test(html)) {
+    return html;
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
+
+  const root = doc.body.firstElementChild as HTMLElement | null;
+
+  if (!root) return html;
+
+  const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+
+  const textNodes: Text[] = [];
+
+  while (walker.nextNode()) {
+    const node = walker.currentNode as Text;
+
+    const parent = node.parentElement;
+
+    if (!parent) continue;
+
+    if (parent.closest('a')) continue;
+
+    textNodes.push(node);
+  }
+
+  textNodes.forEach((node) => {
+    const text = node.nodeValue || '';
+
+    if (!/https?:\/\//i.test(text)) return;
+
+    const fragment = doc.createDocumentFragment();
+
+    const parts = text.split(/(https?:\/\/[^\s<]+)/gi);
+
+    parts.forEach((part) => {
+      if (/^https?:\/\//i.test(part)) {
+        const a = doc.createElement('a');
+
+        a.href = part;
+        a.textContent = part;
+
+        fragment.appendChild(a);
+      } else {
+        fragment.appendChild(doc.createTextNode(part));
+      }
+    });
+
+    node.replaceWith(fragment);
+  });
+
+  return root.innerHTML;
+};
+
+const renderCaptionHtml = (caption: string): string => {
+  if (!caption) return '';
+
+  const html = getRenderableHtml(
+  linkifyPlainTextUrls(
+    caption
+      .split(/\s*\[줄바꿈\]\s*/)
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join('<br />')
+  )
+  );
+
+  return html.replace(
+    /<a\s+([^>]*?)href=["']([^"']+)["']([^>]*)>/gi,
+    (_match, beforeHref, href, afterHref) => {
+      const attrsBase = `${beforeHref} ${afterHref}`
+        .replace(/\shref=["'][^"']*["']/gi, '')
+        .replace(/\starget=["'][^"']*["']/gi, '')
+        .replace(/\srel=["'][^"']*["']/gi, '')
+        .trim();
+
+      if (href.startsWith('#')) {
+        return `<a ${attrsBase} href="${href}">`;
+      }
+
+      return `<a ${attrsBase} href="${href}" target="_blank" rel="noopener noreferrer">`;
+    }
+  );
+};
+
+const normalizeLooseImageCaptions = (html: string): string => {
+  if (!html || !/<figcaption/i.test(html) || !/<img/i.test(html)) {
+    return html;
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  const paragraphs = Array.from(doc.body.querySelectorAll('p'));
+
+  paragraphs.forEach((paragraph) => {
+    const img = paragraph.querySelector('img');
+    if (!img) return;
+
+    const next = paragraph.nextElementSibling;
+    if (!next || next.tagName.toUpperCase() !== 'FIGCAPTION') return;
+
+    const figcaption = next;
+    const figure = doc.createElement('figure');
+
+    figure.className = 'wp-block-image';
+
+    figure.innerHTML = `${paragraph.innerHTML.trim()}<figcaption>${sanitizeCaptionHtml(
+      escapeNonHtmlAngleBrackets(figcaption.innerHTML || '')
+    )}</figcaption>`;
+
+    const possibleEmptyParagraph = figcaption.nextElementSibling;
+
+    paragraph.replaceWith(figure);
+    figcaption.remove();
+
+    if (
+      possibleEmptyParagraph &&
+      possibleEmptyParagraph.tagName.toUpperCase() === 'P' &&
+      possibleEmptyParagraph.innerHTML
+        .replace(/<br\s*\/?>/gi, '')
+        .replace(/&nbsp;/gi, '')
+        .replace(/\u00a0/g, '')
+        .replace(/\s/g, '')
+        .trim() === ''
+    ) {
+      possibleEmptyParagraph.remove();
+    }
+  });
+
+    return doc.body.innerHTML;
+};
+
+const normalizeLegacyWpCaptionFigures = (html: string): string => {
+  if (!html || !/\bwp-caption\b/i.test(html)) {
+    return html;
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  const figures = Array.from(
+    doc.body.querySelectorAll('figure.wp-caption')
+  );
+
+  figures.forEach((figure) => {
+    figure.classList.remove('wp-caption');
+    figure.classList.add('wp-block-image');
+
+    if (figure.classList.contains('alignnone')) {
+      figure.classList.remove('alignnone');
+    }
+
+    const styleWidth = figure
+      .getAttribute('style')
+      ?.match(/width:\s*([^;]+)/i)?.[1];
+
+    if (styleWidth) {
+      figure.setAttribute(
+        'style',
+        `max-width: ${styleWidth.trim()};`
+      );
+    }
+
+    const figcaption = figure.querySelector('figcaption');
+
+    if (figcaption) {
+      figcaption.innerHTML = sanitizeCaptionHtml(
+        escapeNonHtmlAngleBrackets(figcaption.innerHTML || '')
+      );
+    }
+  });
+
+  return doc.body.innerHTML;
+};
+
 // ============================================================
 // HTML Sanitization
 // ============================================================
+
+
 const sanitizeHtml = (html: string): string => {
   let cleaned = html;
 
@@ -230,13 +417,14 @@ const sanitizeHtml = (html: string): string => {
     const imgTag = imgMatch ? imgMatch[0] : '';
 
     const rawCaptionText = inner
-  .replace(/<img[^>]+>/i, '')
-  .replace(/<\/?a[^>]*>/gi, '')
-  .trim();
+      .replace(/<img[^>]+>/i, '')
+      .trim();
 
-const safeCaptionText = escapeNonHtmlAngleBrackets(rawCaptionText);
+    const safeCaptionText = sanitizeCaptionHtml(
+      escapeNonHtmlAngleBrackets(rawCaptionText)
+    );
 
-const captionText = safeCaptionText;
+    const captionText = safeCaptionText;
 
     const alignMatch = captionAttrs.match(/align=["']?(alignleft|alignright|aligncenter)["']?/i);
     const widthMatch = captionAttrs.match(/width=["']?(\d+)["']?/i);
@@ -252,9 +440,15 @@ const captionText = safeCaptionText;
   }
 );
 
-  // ============================================================
-  // [gallery ids="..."] → gallery HTML 변환
-  // ============================================================
+  cleaned = normalizeLooseImageCaptions(cleaned);
+
+cleaned = normalizeLegacyWpCaptionFigures(cleaned);
+
+console.log('[sanitizeHtml]', cleaned);
+
+// ============================================================
+// [gallery ids="..."] → gallery HTML 변환
+// ============================================================
   cleaned = cleaned.replace(
     /\[gallery\b([^\]]*)ids=['"]([^'"]+)['"]([^\]]*)\]/gi,
     (_, _beforeIds, idsStr) => {
@@ -720,7 +914,7 @@ const isGalleryHtml = (html: string): boolean => {
 };
 
 const isSingleImageHtml = (html: string): boolean => {
-  return /\bwp-block-image\b/i.test(html);
+  return /\bwp-block-image\b/i.test(html) || /\bwp-caption\b/i.test(html);
 };
 
 const isSliderbergHtml = (html: string): boolean => {
@@ -798,10 +992,11 @@ const parseOrphanHtml = (html: string): ParsedBlock[] => {
     buffer.length = 0;
   };
 
-  const nodes = Array.from(doc.body.childNodes);
+      const nodes = Array.from(doc.body.childNodes);
   const inlineBuffer: string[] = [];
 
-  for (const node of nodes) {
+  for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex += 1) {
+    const node = nodes[nodeIndex];
     // 1) 텍스트 노드 → 일단 버퍼에 쌓음
     if (node.nodeType === Node.TEXT_NODE) {
       const text = node.textContent || '';
@@ -879,18 +1074,39 @@ const parseOrphanHtml = (html: string): ParsedBlock[] => {
       continue;
     }
 
-    // 6. Single image
+        // 6. Single image
     if (
       isSingleImageHtml(outer) ||
       (el.tagName === 'IMG' &&
         !el.closest('.wp-block-gallery') &&
         !el.closest('.gallery'))
     ) {
-      blocks.push({
-        type: 'image',
-        html: el.tagName === 'IMG' ? `<figure>${outer}</figure>` : outer,
-        align,
-      });
+      const nextNode = nodes[nodeIndex + 1];
+
+      if (
+        nextNode &&
+        nextNode.nodeType === Node.ELEMENT_NODE &&
+        (nextNode as HTMLElement).tagName.toUpperCase() === 'FIGCAPTION'
+      ) {
+        const captionOuter = (nextNode as HTMLElement).outerHTML.trim();
+
+        blocks.push({
+          type: 'image',
+          html: `<figure class="wp-block-image">${
+            el.tagName === 'IMG' ? outer : outer
+          }${captionOuter}</figure>`,
+          align,
+        });
+
+        nodeIndex += 1;
+      } else {
+        blocks.push({
+          type: 'image',
+          html: el.tagName === 'IMG' ? `<figure>${outer}</figure>` : outer,
+          align,
+        });
+      }
+
       continue;
     }
 
@@ -900,7 +1116,7 @@ const parseOrphanHtml = (html: string): ParsedBlock[] => {
       continue;
     }
 
-    // 8. Paragraph
+        // 8. Paragraph
     if (el.tagName === 'P') {
   const videoEmbedUrl = getVideoEmbedUrlFromText(outer);
 
@@ -910,10 +1126,28 @@ const parseOrphanHtml = (html: string): ParsedBlock[] => {
       html: `<figure class="wp-block-embed"><div class="wp-block-embed__wrapper"><iframe src="${videoEmbedUrl}" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div></figure>`,
       align,
     });
-  } else if (/<iframe/i.test(outer)) {
+    } else if (/<iframe/i.test(outer)) {
     blocks.push({ type: 'embed', html: outer, align });
   } else if (/<img/i.test(outer)) {
-    blocks.push({ type: 'image', html: outer, align });
+    const nextNode = nodes[nodeIndex + 1];
+
+    if (
+      nextNode &&
+      nextNode.nodeType === Node.ELEMENT_NODE &&
+      (nextNode as HTMLElement).tagName.toUpperCase() === 'FIGCAPTION'
+    ) {
+      const captionOuter = (nextNode as HTMLElement).outerHTML.trim();
+
+      blocks.push({
+        type: 'image',
+        html: `<figure class="wp-block-image">${outer}${captionOuter}</figure>`,
+        align,
+      });
+
+      nodeIndex += 1;
+    } else {
+      blocks.push({ type: 'image', html: outer, align });
+    }
   } else {
     const normalizedParagraphHtml = outer.replace(
   /(<p[^>]*>)([\s\S]*?)(<\/p>)/i,
@@ -1190,15 +1424,20 @@ const getImageMetaFromHtml = (
     align = 'full';
   }
 
-  const rawCaption = captionMatch?.[1] || '';
-  const safeCaption = escapeNonHtmlAngleBrackets(rawCaption);
+    const rawCaption = captionMatch?.[1] || '';
+
+  const captionHtml = sanitizeCaptionHtml(
+    escapeNonHtmlAngleBrackets(rawCaption)
+  ).trim();
+
   const caption = decodeHtmlEntities(
-    safeCaption.replace(/<[^>]+>/g, '').trim()
+    captionHtml.replace(/<[^>]+>/g, '').trim()
   );
 
   return {
     src,
     caption,
+    captionHtml,
     width: widthMatch ? Number(widthMatch[1]) : undefined,
     height: heightMatch ? Number(heightMatch[1]) : undefined,
     styleWidth: styleWidthMatch ? styleWidthMatch[1].trim() : undefined,
@@ -1366,7 +1605,7 @@ const ImageFrame = ({
             : lang === 'en'
             ? 'font-[var(--font-body-en)]'
             : 'font-[var(--font-body-ko)]'
-        } text-foreground/80 text-sm md:text-[16px] leading-[1.5] opacity-100 ${paragraphAlignClass}
+        } text-foreground/80 text-sm md:text-[16px] leading-[1.5] opacity-100 break-words ${paragraphAlignClass}
           [&_p]:my-0
           [&_div]:my-0
           [&_p+p]:mt-5
@@ -1468,34 +1707,31 @@ const SingleImageBlock = ({
   lang,
 }: {
   block: ParsedBlock;
-   lang: string;
+  lang: string;
 }) => {
   const images = extractImagesFromBlocks([block]);
   if (images.length === 0) return null;
 
   const image = images[0];
-  const captionAlignClass =
-    image.align === 'right'
-      ? 'text-right'
-      : image.align === 'left'
-      ? 'text-left'
-      : 'text-center';
+  const captionHtml = image.captionHtml || image.caption || '';
 
   return (
     <div className="max-w-5xl mx-auto px-1 md:px-12">
       <ImageFrame image={image} alt={image.caption || 'Image'} />
-      {image.caption && (
-        <p
-  className={`text-[10px] md:text-[11px] text-muted-foreground/50 mt-3 ${
-    lang === 'jp'
-      ? 'font-[var(--font-body-jp)]'
-      : lang === 'en'
-      ? 'font-[var(--font-body-en)]'
-      : 'font-[var(--font-body-ko)]'
-  } ${captionAlignClass}`}
->
-          {image.caption}
-        </p>
+
+      {captionHtml && (
+        <div
+          className={`mt-5 text-center text-[10px] md:text-[11px] leading-[1.5] tracking-[0.02em] text-muted-foreground/52 ${
+            lang === 'jp'
+              ? 'font-[var(--font-body-jp)]'
+              : lang === 'en'
+              ? 'font-[var(--font-body-en)]'
+              : 'font-[var(--font-body-ko)]'
+          } ${wpContentStyles}`}
+          dangerouslySetInnerHTML={{
+            __html: renderCaptionHtml(captionHtml),
+          }}
+        />
       )}
     </div>
   );
@@ -1575,7 +1811,7 @@ const ImageSliderBlock = ({
   if (images.length === 0) return null;
 
   const currentImage = images[currentSlide];
-  const currentCaption = currentImage?.caption || '';
+const currentCaption = currentImage?.captionHtml || currentImage?.caption || '';
 
  if (images.length === 1) {
   return (
@@ -1594,21 +1830,22 @@ const ImageSliderBlock = ({
         />
       </div>
 
-      <div className="mt-5 h-6 flex items-center justify-center">
-        {currentCaption && (
-          <p
-            className={`text-center text-[10px] md:text-[11px] leading-[1.5] tracking-[0.02em] text-muted-foreground/65 ${
-              lang === 'jp'
-                ? 'font-[var(--font-body-jp)]'
-                : lang === 'en'
-                ? 'font-[var(--font-body-en)]'
-                : 'font-[var(--font-body-ko)]'
-            }`}
-          >
-            {currentCaption}
-          </p>
-        )}
-      </div>
+      <div className="mt-5 h-auto flex items-center justify-center">
+  {currentCaption && (
+    <div
+      className={`text-center text-[10px] md:text-[11px] leading-[1.5] tracking-[0.02em] text-muted-foreground/52 ${
+        lang === 'jp'
+          ? 'font-[var(--font-body-jp)]'
+          : lang === 'en'
+          ? 'font-[var(--font-body-en)]'
+          : 'font-[var(--font-body-ko)]'
+      } ${wpContentStyles}`}
+      dangerouslySetInnerHTML={{
+        __html: renderCaptionHtml(currentCaption),
+      }}
+    />
+  )}
+</div>
     </div>
   );
 }
@@ -1652,28 +1889,20 @@ const ImageSliderBlock = ({
         </div>
 
         <div className="h-auto flex items-center justify-center">
-  {currentCaption && (() => {
-    const lines = currentCaption
-      .split('//')
-      .map((p) => p.trim())
-      .filter(Boolean);
-
-    return (
-      <div
-        className={`text-center text-[10px] md:text-[11px] leading-[1.5] tracking-[0.02em] text-muted-foreground/52 ${
-          lang === 'jp'
-            ? 'font-[var(--font-body-jp)]'
-            : lang === 'en'
-            ? 'font-[var(--font-body-en)]'
-            : 'font-[var(--font-body-ko)]'
-        }`}
-      >
-        {lines.map((line, idx) => (
-          <p className="text-[12px] text-[13px] text-[14px] text-[13px] text-[12px] text-[13px] text-[14px]" key={idx}>{line}</p>
-        ))}
-      </div>
-    );
-  })()}
+  {currentCaption && (
+    <div
+      className={`text-center text-[10px] md:text-[11px] leading-[1.5] tracking-[0.02em] text-muted-foreground/52 ${
+        lang === 'jp'
+          ? 'font-[var(--font-body-jp)]'
+          : lang === 'en'
+          ? 'font-[var(--font-body-en)]'
+          : 'font-[var(--font-body-ko)]'
+      } ${wpContentStyles}`}
+      dangerouslySetInnerHTML={{
+        __html: renderCaptionHtml(currentCaption),
+      }}
+    />
+  )}
 </div>
 
         <div className="flex items-center justify-center gap-8 md:gap-10">
