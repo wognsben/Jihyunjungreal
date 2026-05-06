@@ -1865,9 +1865,18 @@ const currentCaption = currentImage?.captionHtml || currentImage?.caption || '';
 
             {/* Mobile: 전체 클릭시 다음 */}
             <div
-              className="md:hidden absolute inset-0 z-20 cursor-pointer"
-              onClick={goToNext}
-            />
+  className="md:hidden absolute inset-0 z-20 cursor-pointer"
+  onClick={(e) => {
+    const target = e.target as HTMLElement;
+
+    // 링크 클릭이면 슬라이드 넘김 막기
+    if (target.closest('a')) {
+      return;
+    }
+
+    goToNext();
+  }}
+/>
 
             {/* 현재 이미지 1장만 렌더 */}
             <div className="w-full">
