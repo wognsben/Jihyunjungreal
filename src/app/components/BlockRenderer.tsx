@@ -1721,13 +1721,7 @@ const SingleImageBlock = ({
 
       {captionHtml && (
         <div
-          className={`mt-5 text-center text-[10px] md:text-[11px] leading-[1.5] tracking-[0.02em] text-muted-foreground/52 ${
-            lang === 'jp'
-              ? 'font-[var(--font-body-jp)]'
-              : lang === 'en'
-              ? 'font-[var(--font-body-en)]'
-              : 'font-[var(--font-body-ko)]'
-          } ${wpContentStyles}`}
+          className={`mt-5 text-center leading-[1.5] tracking-[0.02em] text-muted-foreground/52 ${ lang === 'jp' ? 'font-[var(--font-body-jp)]' : lang === 'en' ? 'font-[var(--font-body-en)]' : 'font-[var(--font-body-ko)]' } ${wpContentStyles} text-[13px]`}
           dangerouslySetInnerHTML={{
             __html: renderCaptionHtml(captionHtml),
           }}
@@ -1891,13 +1885,7 @@ const currentCaption = currentImage?.captionHtml || currentImage?.caption || '';
         <div className="h-auto flex items-center justify-center">
   {currentCaption && (
     <div
-      className={`text-center text-[10px] md:text-[11px] leading-[1.5] tracking-[0.02em] text-muted-foreground/52 ${
-        lang === 'jp'
-          ? 'font-[var(--font-body-jp)]'
-          : lang === 'en'
-          ? 'font-[var(--font-body-en)]'
-          : 'font-[var(--font-body-ko)]'
-      } ${wpContentStyles}`}
+      className={`text-center leading-[1.5] tracking-[0.02em] text-muted-foreground/52 ${ lang === 'jp' ? 'font-[var(--font-body-jp)]' : lang === 'en' ? 'font-[var(--font-body-en)]' : 'font-[var(--font-body-ko)]' } ${wpContentStyles} text-[14px]`}
       dangerouslySetInnerHTML={{
         __html: renderCaptionHtml(currentCaption),
       }}

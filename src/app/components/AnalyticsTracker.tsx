@@ -9,13 +9,20 @@ declare global {
 export function AnalyticsTracker() {
   useEffect(() => {
     const sendPageView = () => {
-      if (!window.gtag) return;
+  if (!window.gtag) return;
 
-      window.gtag('config', 'G-CVEB5VZM0D', {
-        page_path: window.location.hash || '/',
-        page_title: document.title,
-      });
-    };
+  // 제작자 GA4
+  window.gtag('config', 'G-CVEB5VZM0D', {
+    page_path: window.location.hash || '/',
+    page_title: document.title,
+  });
+
+  // 클라이언트 GA4
+  window.gtag('config', 'G-ZRNV1Y3ZVM', {
+    page_path: window.location.hash || '/',
+    page_title: document.title,
+  });
+};
 
     sendPageView();
 
