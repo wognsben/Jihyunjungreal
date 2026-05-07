@@ -36,6 +36,7 @@ interface RenderGroup {
 }
 
 interface ExtractedImage {
+  linkHref?: string;
   src: string;
   caption: string;
   captionHtml?: string;
@@ -280,6 +281,19 @@ const linkifyPlainTextUrls = (html: string): string => {
   return root.innerHTML;
 };
 
+const isInternalJihyunjungLink = (href: string): boolean => {
+  if (!href) return false;
+
+  const trimmedHref = href.trim();
+
+  return (
+    trimmedHref.startsWith('#') ||
+    trimmedHref.startsWith('/') ||
+    trimmedHref.includes('https://jihyunjung.com') ||
+    trimmedHref.includes('https://www.jihyunjung.com')
+  );
+};
+
 const renderCaptionHtml = (caption: string): string => {
   if (!caption) return '';
 
@@ -302,11 +316,11 @@ const renderCaptionHtml = (caption: string): string => {
         .replace(/\srel=["'][^"']*["']/gi, '')
         .trim();
 
-      if (href.startsWith('#')) {
-        return `<a ${attrsBase} href="${href}">`;
-      }
+      if (isInternalJihyunjungLink(href)) {
+  return `<a ${attrsBase} href="${href}">`;
+}
 
-      return `<a ${attrsBase} href="${href}" target="_blank" rel="noopener noreferrer">`;
+return `<a ${attrsBase} href="${href}" target="_blank" rel="noopener noreferrer">`;
     }
   );
 };
@@ -443,8 +457,6 @@ const sanitizeHtml = (html: string): string => {
   cleaned = normalizeLooseImageCaptions(cleaned);
 
 cleaned = normalizeLegacyWpCaptionFigures(cleaned);
-
-console.log('[sanitizeHtml]', cleaned);
 
 // ============================================================
 // [gallery ids="..."] → gallery HTML 변환
@@ -720,8 +732,12 @@ const withExternalLinkTarget = (html: string): string => {
           return `<a ${attrsBase} href="${href}" target="_blank" rel="noopener noreferrer">`;
         }
 
-        // footnote가 아닌 진짜 외부 링크는 새창 유지
-        return `<a ${attrsBase} href="${href}" target="_blank" rel="noopener noreferrer">`;
+        if (isInternalJihyunjungLink(href)) {
+  return `<a ${attrsBase} href="${href}">`;
+}
+
+// footnote가 아닌 진짜 외부 링크는 새창 유지
+return `<a ${attrsBase} href="${href}" target="_blank" rel="noopener noreferrer">`;
       }
 
       // 5) 나머지 내부 링크는 그대로
@@ -1397,6 +1413,7 @@ const getImageMetaFromHtml = (
   if (!src) return null;
 
   const captionMatch = html.match(/<figcaption[^>]*>([\s\S]*?)<\/figcaption>/i);
+  const linkHrefMatch = html.match(/<a[^>]+href=["']([^"']+)["'][^>]*>\s*<img/i);
   const widthMatch = html.match(/\bwidth=["']?(\d+)["']?/i);
   const heightMatch = html.match(/\bheight=["']?(\d+)["']?/i);
   const styleWidthMatch = html.match(/style=["'][^"']*width:\s*([^;"']+)/i);
@@ -1438,6 +1455,7 @@ const getImageMetaFromHtml = (
     src,
     caption,
     captionHtml,
+    linkHref: linkHrefMatch?.[1],
     width: widthMatch ? Number(widthMatch[1]) : undefined,
     height: heightMatch ? Number(heightMatch[1]) : undefined,
     styleWidth: styleWidthMatch ? styleWidthMatch[1].trim() : undefined,
@@ -1513,12 +1531,14 @@ const ImageFrame = ({
   priority = false,
   compact = false,
   eager = false,
+  enableLink = false,
 }: {
   image: ExtractedImage;
   alt: string;
   priority?: boolean;
   compact?: boolean;
   eager?: boolean;
+  enableLink?: boolean;
 }) => {
   const wrapperAlignClass =
     image.align === 'left'
@@ -1548,17 +1568,41 @@ const ImageFrame = ({
     >
       <div className={`${wrapperAlignClass}`} style={wrapperStyle}>
         <div className="flex items-center justify-center">
-          <img
-            src={image.src}
-            alt={alt}
-            width={image.width}
-            height={image.height}
-            className="block w-auto h-auto max-w-full object-contain"
-            loading={eager || priority ? 'eager' : 'lazy'}
-            decoding="async"
-            draggable={false}
-          />
-        </div>
+  {enableLink && image.linkHref ? (
+    <a
+      href={image.linkHref}
+      target={isInternalJihyunjungLink(image.linkHref) ? undefined : '_blank'}
+      rel={
+        isInternalJihyunjungLink(image.linkHref)
+          ? undefined
+          : 'noopener noreferrer'
+      }
+      className="block"
+    >
+      <img
+        src={image.src}
+        alt={alt}
+        width={image.width}
+        height={image.height}
+        className="block w-auto h-auto max-w-full object-contain"
+        loading={eager || priority ? 'eager' : 'lazy'}
+        decoding="async"
+        draggable={false}
+      />
+    </a>
+  ) : (
+    <img
+      src={image.src}
+      alt={alt}
+      width={image.width}
+      height={image.height}
+      className="block w-auto h-auto max-w-full object-contain"
+      loading={eager || priority ? 'eager' : 'lazy'}
+      decoding="async"
+      draggable={false}
+    />
+  )}
+</div>
       </div>
     </div>
   );
@@ -1717,7 +1761,7 @@ const SingleImageBlock = ({
 
   return (
     <div className="max-w-5xl mx-auto px-1 md:px-12">
-      <ImageFrame image={image} alt={image.caption || 'Image'} />
+      <ImageFrame image={image} alt={image.caption || 'Image'} enableLink />
 
       {captionHtml && (
         <div
