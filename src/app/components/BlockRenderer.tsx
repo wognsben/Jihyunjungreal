@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { toCdnUrl } from '@/utils/toCdnUrl';
-import { fetchInternalContentPreview } from '@/services/wp-api';
 
 // ============================================================
 // BlockRenderer: WordPress Gutenberg 블록 → React 컴포넌트
@@ -293,6 +292,28 @@ const isInternalJihyunjungLink = (href: string): boolean => {
     trimmedHref.includes('https://jihyunjung.com') ||
     trimmedHref.includes('https://www.jihyunjung.com')
   );
+};
+
+const normalizeImageLinkHref = (href?: string): string | undefined => {
+  if (!href) return undefined;
+
+  const trimmedHref = href.trim();
+
+  if (!trimmedHref) return undefined;
+
+  if (
+    trimmedHref.startsWith('#') ||
+    trimmedHref.startsWith('/') ||
+    trimmedHref.startsWith('http://') ||
+    trimmedHref.startsWith('https://') ||
+    trimmedHref.startsWith('//') ||
+    trimmedHref.startsWith('mailto:') ||
+    trimmedHref.startsWith('tel:')
+  ) {
+    return trimmedHref;
+  }
+
+  return `https://${trimmedHref}`;
 };
 
 const getInternalContentLinkMeta = (href?: string) => {
@@ -1479,7 +1500,7 @@ const getImageMetaFromHtml = (
     src,
     caption,
     captionHtml,
-    linkHref: linkHrefMatch?.[1],
+    linkHref: normalizeImageLinkHref(linkHrefMatch?.[1]),
     width: widthMatch ? Number(widthMatch[1]) : undefined,
     height: heightMatch ? Number(heightMatch[1]) : undefined,
     styleWidth: styleWidthMatch ? styleWidthMatch[1].trim() : undefined,
@@ -1770,84 +1791,6 @@ const HeadingBlock = ({
   );
 };
 
-const SingleImageInternalPreview = ({
-  image,
-  lang,
-  placement = 'bottom',
-}: {
-  image: ExtractedImage;
-  lang: string;
-  placement?: 'side' | 'bottom';
-}) => {
-  const [preview, setPreview] = useState<{
-    id: string;
-    type: 'work' | 'text';
-    title: string;
-    year?: string | number;
-  } | null>(null);
-
-  const meta = getInternalContentLinkMeta(image.linkHref);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadPreview = async () => {
-      if (!meta) {
-        setPreview(null);
-        return;
-      }
-
-      const result = await fetchInternalContentPreview(
-        meta.type,
-        meta.id,
-        lang
-      );
-
-      if (!cancelled) {
-        setPreview(result);
-      }
-    };
-
-    loadPreview();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [meta?.type, meta?.id, lang]);
-
-  if (!meta || !image.linkHref || !preview?.title) {
-    return null;
-  }
-
-  const fontClass =
-    lang === 'jp'
-      ? 'font-[var(--font-body-jp)]'
-      : lang === 'en'
-      ? 'font-[var(--font-body-en)]'
-      : 'font-[var(--font-body-ko)]';
-
-  const placementClass =
-    placement === 'side'
-      ? 'mt-3 md:mt-0 md:w-[160px] md:shrink-0 text-center md:text-left'
-      : 'mt-2 text-center';
-
-  return (
-    <a
-      href={image.linkHref}
-      className={`block ${placementClass} ${fontClass} text-foreground/42 transition-all duration-500 hover:text-foreground/72`}
-    >
-      <span className="block text-[9px] leading-none tracking-[0.18em] uppercase text-foreground/30">
-        {preview.type === 'work' ? 'WORK' : 'TEXT'}
-      </span>
-
-      <span className="mt-1.5 block text-[11px] leading-[1.45] tracking-[0.02em]">
-        {preview.title}
-        {preview.year ? `, ${preview.year}` : ''}
-      </span>
-    </a>
-  );
-};
-
 const SingleImageBlock = ({
   block,
   lang,
@@ -1860,43 +1803,20 @@ const SingleImageBlock = ({
 
   const image = images[0];
   const captionHtml = image.captionHtml || image.caption || '';
-  const hasInternalPreview = Boolean(getInternalContentLinkMeta(image.linkHref));
-  const useSidePreview =
-    hasInternalPreview && (image.align === 'left' || image.align === 'right');
 
   return (
     <div className="max-w-5xl mx-auto px-1 md:px-12">
-      {useSidePreview ? (
-        <div
-          className={`flex flex-col md:items-center md:gap-5 ${
-            image.align === 'right' ? 'md:flex-row-reverse' : 'md:flex-row'
-          }`}
-        >
-          <div className="min-w-0">
-            <ImageFrame image={image} alt={image.caption || 'Image'} enableLink />
-          </div>
-
-          <SingleImageInternalPreview
-            image={image}
-            lang={lang}
-            placement="side"
-          />
-        </div>
-      ) : (
-        <>
-          <ImageFrame image={image} alt={image.caption || 'Image'} enableLink />
-
-          <SingleImageInternalPreview
-            image={image}
-            lang={lang}
-            placement="bottom"
-          />
-        </>
-      )}
+      <ImageFrame image={image} alt={image.caption || 'Image'} enableLink />
 
       {captionHtml && (
         <div
-          className={`mt-5 text-center leading-[1.5] tracking-[0.02em] text-muted-foreground/52 ${ lang === 'jp' ? 'font-[var(--font-body-jp)]' : lang === 'en' ? 'font-[var(--font-body-en)]' : 'font-[var(--font-body-ko)]' } ${wpContentStyles} text-[13px]`}
+          className={`mt-5 text-center leading-[1.5] tracking-[0.02em] text-muted-foreground/52 ${
+            lang === 'jp'
+              ? 'font-[var(--font-body-jp)]'
+              : lang === 'en'
+              ? 'font-[var(--font-body-en)]'
+              : 'font-[var(--font-body-ko)]'
+          } ${wpContentStyles} text-[13px]`}
           dangerouslySetInnerHTML={{
             __html: renderCaptionHtml(captionHtml),
           }}

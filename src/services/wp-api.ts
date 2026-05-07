@@ -15,65 +15,6 @@ const makeWorkDetailCacheKey = (id: string, lang: string) => {
   return `${id}_${lang}`;
 };
 
-export interface InternalContentPreview {
-  id: string;
-  type: 'work' | 'text';
-  title: string;
-  year?: string | number;
-}
-
-export const fetchInternalContentPreview = async (
-  type: 'work' | 'text',
-  id: string,
-  lang: string
-): Promise<InternalContentPreview | null> => {
-  try {
-    const endpoint = type === 'work' ? `/work/${id}` : `/text/${id}`;
-
-    const response = await api.get(endpoint);
-    const post = response.data;
-    const acf = post.acf || {};
-
-    let title = decode(post.title?.rendered || '');
-
-    if (type === 'work') {
-      if (lang === 'en') {
-        title = decode(acf['제목_en'] || post.title?.rendered || '');
-      } else if (lang === 'jp') {
-        title = decode(acf['제목_jp'] || post.title?.rendered || '');
-      }
-    }
-
-    if (type === 'text') {
-      if (lang === 'en') {
-        title = decode(
-          acf['TEXT_제목_EN'] ||
-            acf['text_제목_en'] ||
-            post.title?.rendered ||
-            ''
-        );
-      } else if (lang === 'jp') {
-        title = decode(
-          acf['TEXT_제목_JP'] ||
-            acf['text_제목_jp'] ||
-            post.title?.rendered ||
-            ''
-        );
-      }
-    }
-
-    return {
-      id: String(post.id),
-      type,
-      title,
-      year: post.work_year || acf.year || '',
-    };
-  } catch (error) {
-    console.error('[fetchInternalContentPreview]', error);
-    return null;
-  }
-};
-
 // Interfaces
 export interface AboutData {
   title: string;
